@@ -1,0 +1,5 @@
+v 1.0.0, Arman Mahmud 25oct2025 
+d odkrepeatmerge: Integrate repeat group data from ODK, following the questionnaire's sequence.
+d distribution-date: 2025-10-25
+f odkrepeatmerge.ado
+f odkrepeatmerge.sthlp
