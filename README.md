@@ -1,6 +1,9 @@
 # odkrepeatmerge
 Use this command to merge repeat group data from ODK in alignment with the questionnaire's order. It ensures the data follows the original sequence of the survey.
 
+## 🚧 odkrepeatmerge Status
+⚠️ **Warning:** ``odkrepeatmerge`` is currently in the testing phase. Use it at your own risk — Author
+
 ## Descriptions
 The `odkrepeatmerge` command is specifically crafted to streamline the integration of repeat group data collected through ODK forms. It automates the process of merging multiple repeat group files, ensuring that all entries are accurately consolidated without manual intervention. Once the data is merged, the command arranges the resulting variables to mirror the original questionnaire’s design, preserving both the logical flow and hierarchical structure of the survey. This ensures consistency in data analysis and simplifies downstream processing by maintaining the integrity of the survey’s intended sequence.
 
