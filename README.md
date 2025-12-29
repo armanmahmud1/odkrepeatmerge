@@ -14,8 +14,8 @@ net install odkrepeatmerge, from("https://raw.githubusercontent.com/armanmahmud1
 
 ## Example
 ```
-    odkrepeatmerge,formid("rmg_environmental_survey") \\\
-	formtitle("RMG Environmental Survey ODK.xlsx") \\\
+    odkrepeatmerge,formid("rmg_environmental_survey") ///
+	formtitle("RMG Environmental Survey ODK.xlsx") ///
 	formloc("D:\My drive\test")
 ```
 
