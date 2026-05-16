@@ -24,7 +24,9 @@ qui{
 	
 	n di as input _n "Form loading and repeat group splitting initiated..."
 	
+	tempfile survey_rows
 	import excel using "${form_name}", firstrow clear
+	save `survey_rows'
 	keep if type == "begin_repeat" | type == "begin repeat"
 	levelsof name, loc(rep_group)
 	
@@ -175,17 +177,48 @@ qui{
 
 	
 	*order all variables
-	import excel using "${form_name}", firstrow clear
+	tempfile question_meta variable_order
+	tempname qh oh
+	use `survey_rows', clear
 	keep type name
-	drop if regexm(type, "begin") | regexm(type, "end") | regexm(type, "note")
-	drop if type == ""
-
+	replace type = lower(strtrim(type))
+	replace name = strtrim(name)
+	drop if name == ""
 	
-	loc order_ques 
-	forval x = 1/`=_N'{
-		loc __j = `x'
-		loc order_ques `order_ques' `=name[`__j']'
+	postfile `qh' str128 qname str244 qtemplate int qdepth long qseq using `question_meta', replace
+	local depth = 0
+	local pos0 = 0
+	local path0 ""
+	local templ0 ""
+	local qseq = 0
+	
+	forvalues x = 1/`=_N'{
+		local __type "`=type[`x']'"
+		local __name "`=name[`x']'"
+		
+		if inlist("`__type'", "begin_repeat", "begin repeat"){
+			local pos`depth' = `pos`depth'' + 1
+			local __nextdepth = `depth' + 1
+			local __templ = cond("`templ`depth''" == "", "`pos`depth''", "`templ`depth'' `pos`depth''")
+			local depth = `__nextdepth'
+			local templ`depth' "`__templ'"
+			local path`depth' "`__name'"
+			local pos`depth' = 0
+		}
+		else if inlist("`__type'", "end_repeat", "end repeat"){
+			local pos`depth' = 0
+			local templ`depth' ""
+			local path`depth' ""
+			local depth = `depth' - 1
+		}
+		else if "`__type'" != "note"{
+			local pos`depth' = `pos`depth'' + 1
+			local ++qseq
+			local __templ = cond("`templ`depth''" == "", "`pos`depth''", "`templ`depth'' `pos`depth''")
+			post `qh' ("`__name'") ("`__templ'") (`depth') (`qseq')
+		}
 	}
+	postclose `qh'
 	
 	n di as result "Nested group data merge with main data done"
 	
@@ -194,35 +227,136 @@ qui{
 	n di as input _n "Data ordering initiated..."
 	
 	use `without_order_merged', clear
-
-	local ordered_varlist
-	foreach x of local order_ques {
-		cap unab matched : `x'*
+	unab allvars : _all
+	local allvars `allvars'
+	
+	use `question_meta', clear
+	local qcount = _N
+	local maxdepth = 0
+	forvalues x = 1/`qcount'{
+		local qname`x' "`=qname[`x']'"
+		local qtemplate`x' "`=qtemplate[`x']'"
+		local qdepth`x' = qdepth[`x']
+		local qseq`x' = qseq[`x']
+		if `qdepth`x'' > `maxdepth'{
+			local maxdepth = `qdepth`x''
+		}
+	}
+	
+	local maxkey = 2 * `maxdepth' + 1
+	local keydefs
+	forvalues x = 1/`maxkey'{
+		local keydefs `keydefs' long k`x'
+	}
+	postfile `oh' str128 actual byte grp byte matched int origseq long qseq `keydefs' using `variable_order', replace
+	
+	local origseq = 0
+	foreach x of local allvars {
+		local ++origseq
 		
-		if !_rc {
-			loc ordered_varlist `ordered_varlist' `matched'
+		if "`x'" == "key"{
+			local __postkeys
+			forvalues j = 1/`maxkey'{
+				local __postkeys `__postkeys' (.)
+			}
+			post `oh' ("`x'") (0) (0) (`origseq') (.) `__postkeys'
 		}
 		else {
-			di "warning: no variables matching `x'*"
+			local bestname
+			local besttempl
+			local bestdepth = .
+			local bestqseq = .
+			local besttuple
+			local bestlen = -1
+			
+			forvalues i = 1/`qcount'{
+				local __qname "`qname`i''"
+				local __qdepth = `qdepth`i''
+				local __suffix = substr("`x'", `=length("`__qname'") + 1', .)
+				
+				if strpos("`x'", "`__qname'") == 1{
+					if `__qdepth' == 0{
+						if "`__suffix'" == "" & length("`__qname'") > `bestlen'{
+							local bestname "`__qname'"
+							local besttempl "`qtemplate`i''"
+							local bestdepth = `__qdepth'
+							local bestqseq = `qseq`i''
+							local besttuple
+							local bestlen = length("`__qname'")
+						}
+					}
+					else if regexm("`__suffix'", "^[0-9]+(_[0-9]+)*$"){
+						local __suffix_words : subinstr local __suffix "_" " ", all
+						local __word_count : word count `__suffix_words'
+						
+						if `__word_count' == `__qdepth' & length("`__qname'") > `bestlen'{
+							local __tuple
+							forvalues j = `__word_count'(-1)1{
+								local __piece : word `j' of `__suffix_words'
+								local __tuple `__tuple' `__piece'
+							}
+							
+							local bestname "`__qname'"
+							local besttempl "`qtemplate`i''"
+							local bestdepth = `__qdepth'
+							local bestqseq = `qseq`i''
+							local besttuple "`__tuple'"
+							local bestlen = length("`__qname'")
+						}
+					}
+				}
+			}
+			
+			local __postkeys
+			if `bestlen' >= 0{
+				forvalues j = 1/`maxkey'{
+					local kval`j' .
+				}
+				
+				if `bestdepth' == 0{
+					local __lastpos : word 1 of `besttempl'
+					local kval1 = `__lastpos'
+				}
+				else {
+					forvalues j = 1/`bestdepth'{
+						local __posword : word `j' of `besttempl'
+						local __instword : word `j' of `besttuple'
+						local __k1 = 2 * `j' - 1
+						local __k2 = 2 * `j'
+						local kval`__k1' = `__posword'
+						local kval`__k2' = `__instword'
+					}
+					local __lastindex = `bestdepth' + 1
+					local __lastpos : word `__lastindex' of `besttempl'
+					local __kfinal = 2 * `bestdepth' + 1
+					local kval`__kfinal' = `__lastpos'
+				}
+				
+				forvalues j = 1/`maxkey'{
+					local __postkeys `__postkeys' (`kval`j'')
+				}
+				post `oh' ("`x'") (1) (1) (`origseq') (`bestqseq') `__postkeys'
+			}
+			else {
+				forvalues j = 1/`maxkey'{
+					local __postkeys `__postkeys' (.)
+				}
+				post `oh' ("`x'") (2) (0) (`origseq') (.) `__postkeys'
+			}
 		}
 	}
-
-	di "`ordered_varlist'"
+	postclose `oh'
 	
-	mata{
-		v = tokens(st_local("ordered_varlist")) 
-		v2 = invtokens(v[cols(v)..1])   
-		st_local("revlist", v2) 
+	use `variable_order', clear
+	sort grp k1-k`maxkey' qseq origseq
+	local ordered_varlist
+	forvalues x = 1/`=_N'{
+		local ordered_varlist `ordered_varlist' `=actual[`x']'
 	}
 	
-	foreach i of loc revlist{
-		order `i'
-	}
-	
-	cap conf var submissiondate
-	if !_rc{
-		order submissiondate, first
-	}
+	use `without_order_merged', clear
+	order `ordered_varlist'
+	save "${form_id}.dta", replace
 	
 	n di as result "Data ordering done"
 	
