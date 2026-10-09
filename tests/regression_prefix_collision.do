@@ -2,7 +2,7 @@ clear all
 set more off
 capture log close
 
-local repo "D:/odkrepeatmerge"
+local repo "`c(pwd)'"
 local testdir "`repo'/tests/tmp_prefix_collision"
 
 capture mkdir "`repo'/tests"

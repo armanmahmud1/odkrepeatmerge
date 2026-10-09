@@ -1,2 +1,3 @@
-v 1.0.0
-d odkrepeatmerge: Run this command to integrate repeat group data from ODK, following the questionnaire's sequence. 
+v 3
+d Arman Mahmud
+p odkrepeatmerge
