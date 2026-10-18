@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------------
    audit/odkrepeatmerge_cert.do
-   Certification / regression tests for odkrepeatmerge v1.1.0
+   Certification / regression tests for odkrepeatmerge v1.3.0
 
    Covers:
      T01  Basic single-level repeat group
@@ -9,7 +9,7 @@
      T04  formloc omitted (uses cwd)
      T05  Data in memory preserved after command
      T06  Error: missing formid option
-     T07  Error: missing formtitle option
+     T07  Error: missing xlsform()/formtitle() option
      T08  Error: non-existent form file
      T09  Global macros not leaked after command
      T10  No orphan intermediate .dta files
@@ -56,7 +56,7 @@ input str20 key str10 parent_key str10 item_name byte item_qty
 end
 export delimited using "survey-items.csv", replace
 
-odkrepeatmerge, formid("survey") formtitle("form.xlsx")
+odkrepeatmerge, formid("survey") formtitle("form.xlsx") replace
 
 confirm file "survey.dta"
 use "survey.dta", clear
@@ -117,7 +117,7 @@ input str30 key str20 parent_key str5 p_q1 str5 p_q2
 end
 export delimited using "testform-person.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx")
+odkrepeatmerge, formid("testform") formtitle("testform.xlsx") replace
 
 use "testform.dta", clear
 confirm variable key submissiondate main1 main2
@@ -164,7 +164,7 @@ input str20 key str10 parent_key str5 q1 str5 q10
 end
 export delimited using "testform-rep.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx")
+odkrepeatmerge, formid("testform") formtitle("testform.xlsx") replace
 
 use "testform.dta", clear
 unab allvars : _all
@@ -208,7 +208,7 @@ input str20 key str10 parent_key str5 val
 end
 export delimited using "mysurvey-grp.csv", replace
 
-odkrepeatmerge, formid("mysurvey") formtitle("myform.xlsx")
+odkrepeatmerge, formid("mysurvey") formtitle("myform.xlsx") replace
 confirm file "mysurvey.dta"
 display as result "T04 PASS: formloc omitted, cwd used"
 
@@ -252,9 +252,9 @@ sysuse auto, clear
 datasignature set
 local orig_sig "`r(datasignature)'"
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx")
+odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
 
-datasignature confirm
+capture noisily datasignature confirm
 if _rc == 0 {
 	display as result "T05 PASS: data in memory preserved"
 }
@@ -290,7 +290,7 @@ else {
 * ======================================================================
 display as input _n "=== T07: Missing formtitle ==="
 
-capture noisily odkrepeatmerge, formid("x")
+capture noisily odkrepeatmerge, formid("x") replace
 if _rc != 0 {
 	display as result "T07 PASS: missing formtitle correctly rejected (rc=`=_rc')"
 }
@@ -304,7 +304,7 @@ else {
 * ======================================================================
 display as input _n "=== T08: Non-existent form file ==="
 
-capture noisily odkrepeatmerge, formid("noexist") formtitle("noexist.xlsx")
+capture noisily odkrepeatmerge, formid("noexist") formtitle("noexist.xlsx") replace
 if _rc != 0 {
 	display as result "T08 PASS: non-existent file correctly rejected (rc=`=_rc')"
 }
@@ -343,7 +343,7 @@ export delimited using "f-grp.csv", replace
 
 capture macro drop form_id form_name
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx")
+odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
 
 if "$form_id" == "" & "$form_name" == "" {
 	display as result "T09 PASS: no global macros leaked"
@@ -389,7 +389,7 @@ input str20 key str10 parent_key str5 val
 end
 export delimited using "f-grp.csv", replace
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx")
+odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
 
 capture confirm file "grp.dta"
 if _rc != 0 {

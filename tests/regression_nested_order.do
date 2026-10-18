@@ -48,7 +48,7 @@ input str30 key str20 parent_key str5 p_q1 str5 p_q2
 end
 export delimited using "`testdir'/testform-person.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`testdir'")
+odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`testdir'") replace
 
 use "`testdir'/testform.dta", clear
 unab allvars : _all
