@@ -1,15 +1,16 @@
 {smcl}
-{* *! version 1.3.0 18oct2026 Arman Mahmud}{...}
+{* *! version 1.4.0 18oct2026 Arman Mahmud}{...}
 {viewerjumpto "Syntax" "odkrepeatmerge##syntax"}{...}
 {viewerjumpto "Description" "odkrepeatmerge##description"}{...}
-{viewerjumpto "Before you run" "odkrepeatmerge##files"}{...}
+{viewerjumpto "Files and folders" "odkrepeatmerge##files"}{...}
 {viewerjumpto "Options" "odkrepeatmerge##options"}{...}
 {viewerjumpto "Remarks" "odkrepeatmerge##remarks"}{...}
 {viewerjumpto "Examples" "odkrepeatmerge##examples"}{...}
 {viewerjumpto "Stored results" "odkrepeatmerge##results"}{...}
+{viewerjumpto "Older syntax" "odkrepeatmerge##older"}{...}
 {viewerjumpto "Author" "odkrepeatmerge##author"}{...}
 {hline}
-help for {bf:odkrepeatmerge} {right:version 1.3.0 18oct2026}
+help for {bf:odkrepeatmerge} {right:version 1.4.0 18oct2026}
 {hline}
 
 {title:Title}
@@ -22,30 +23,30 @@ help for {bf:odkrepeatmerge} {right:version 1.3.0 18oct2026}
 {title:Syntax}
 
 {p 8 16 2}
-{cmd:odkrepeatmerge}{cmd:,}
-{opt formid(string)}
+{cmd:odkrepeatmerge using} {it:maincsv}{cmd:,}
 {opt xls:form(filename)}
-[{opt formloc(path)}
-{cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)}
+[{cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)}
 {opt replace}
 {opt sep:arator}
 {opt all:string}]
+
+{p 4 4 2}
+{it:maincsv} is the main (parent) CSV file exported from ODK Central,
+with its folder, e.g. {cmd:"D:/survey/raw/hh_survey.csv"}.
 
 {synoptset 28 tabbed}{...}
 {synopthdr}
 {synoptline}
 {syntab:Required}
-{synopt:{opt formid(string)}}form ID; the main CSV is {it:formid}{cmd:.csv}{p_end}
+{synopt:{opt using} {it:maincsv}}main (parent) CSV file{p_end}
 {synopt:{opt xls:form(filename)}}XLSForm file used to collect the data{p_end}
 
 {syntab:Optional}
-{synopt:{opt formloc(path)}}folder holding the files; default is the current working directory{p_end}
-{synopt:{cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)}}output file; default is {it:formid}{cmd:.dta} in the data folder{p_end}
+{synopt:{cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)}}output file; default is {it:stem}{cmd:.dta} in the current working directory{p_end}
 {synopt:{opt replace}}overwrite the output file if it exists{p_end}
 {synopt:{opt sep:arator}}name variables {cmd:q1_11} instead of {cmd:q111}{p_end}
 {synopt:{opt all:string}}import all columns as strings (keeps leading zeros){p_end}
 {synoptline}
-{p 4 6 2}{opt formtitle()} is accepted as a synonym for {opt xlsform()}.{p_end}
 
 
 {marker description}{...}
@@ -65,37 +66,31 @@ and tested on Stata 17.
 
 
 {marker files}{...}
-{title:Before you run}
+{title:Files and folders}
 
 {p 4 4 2}
-Put all input files in {bf:one folder} (the data folder):
+The data and the XLSForm can be in different folders, for example:
 
-{p 8 11 2}
-{c -} the main (parent) CSV: {it:formid}{cmd:.csv}{p_end}
-{p 8 11 2}
-{c -} one child CSV per repeat group: {it:formid}{cmd:-}{it:groupname}{cmd:.csv}{p_end}
-{p 8 11 2}
-{c -} the XLSForm ({cmd:.xlsx}) used to collect the data{p_end}
+        {cmd:D:/survey/raw/hh_survey.csv}{col 52}{it:main (parent) CSV}
+        {cmd:D:/survey/raw/hh_survey-member.csv}{col 52}{it:child CSV, repeat "member"}
+        {cmd:D:/survey/raw/hh_survey-illness.csv}{col 52}{it:child CSV, repeat "illness"}
+        {cmd:D:/survey/instrument/HH Survey.xlsx}{col 52}{it:XLSForm}
 
 {p 4 4 2}
-{cmd:odkrepeatmerge} looks for these files in the {opt formloc()} folder.
-{bf:If you do not specify formloc(), it looks in the current working}
-{bf:directory, so that directory must be the data folder.}  Either:
-
-{p 8 11 2}
-1. change to the data folder first, then run the command without
-{opt formloc()}:{p_end}
-{phang3}{cmd:. cd "D:/survey/data"}{p_end}
-{phang3}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx")}{p_end}
-
-{p 8 11 2}
-2. or stay where you are and point to the data folder with {opt formloc()}:{p_end}
-{phang3}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data")}{p_end}
+{bf:Child CSVs must be in the same folder as the main CSV} and be named
+{it:stem}{cmd:-}{it:groupname}{cmd:.csv}, where {it:stem} is the main CSV's
+name without {cmd:.csv} ({cmd:hh_survey} above) and {it:groupname} is the
+repeat group's name in the XLSForm.  This is how ODK Central names them.
 
 {p 4 4 2}
-In both cases the output is saved in the data folder as
-{it:formid}{cmd:.dta} ({cmd:hh_survey.dta} above), unless you use
-{opt saving()}.
+File names can be full paths or paths relative to the current working
+directory.  Forward slashes work on all platforms.
+
+{p 4 4 2}
+The output is saved as {it:stem}{cmd:.dta} ({cmd:hh_survey.dta} above) in
+the {bf:current working directory}, so nothing is written to the raw data
+folder.  Use {cmd:cd} to choose the folder first, or give the output file
+with {opt saving()}.
 
 
 {marker options}{...}
@@ -104,30 +99,22 @@ In both cases the output is saved in the data folder as
 {dlgtab:Required}
 
 {phang}
-{opt formid(string)} is the form ID: the name of the main CSV without
-{cmd:.csv} (also the {cmd:form_id} on the {bf:settings} sheet of the
-XLSForm).  The child files must be named {it:formid}{cmd:-}{it:groupname}{cmd:.csv}.
+{opt using} {it:maincsv} is the main (parent) CSV file.  The
+{cmd:.csv} extension may be omitted.  The child CSVs are looked for next to
+it (see {help odkrepeatmerge##files:Files and folders}).
 
 {phang}
-{opt xlsform(filename)} is the file name of the XLSForm, e.g.
-{cmd:"HH Survey.xlsx"}.  Give only the file name; its folder is set by
-{opt formloc()} or the current working directory.  The form is read from its
+{opt xlsform(filename)} is the XLSForm used to collect the data, e.g.
+{cmd:xlsform("D:/survey/instrument/HH Survey.xlsx")}.  It is read from its
 {cmd:survey} sheet, which must have {cmd:type} and {cmd:name} columns.
 {opt formtitle()} is an older name for this option and still works.
 
 {dlgtab:Optional}
 
 {phang}
-{opt formloc(path)} is the data folder that holds the XLSForm and all CSV
-files.  If omitted, the current working directory is used (see
-{help odkrepeatmerge##files:Before you run}).  Forward slashes work on all
-platforms, e.g. {cmd:formloc("D:/My drive/survey")}.
-
-{phang}
 {cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)} saves the result under
-another name.  A file name without a folder is saved in the current working
-directory.  Add {cmd:, replace} inside the parentheses to overwrite an
-existing file.
+another name or in another folder.  Add {cmd:, replace} inside the
+parentheses to overwrite an existing file.
 
 {phang}
 {opt replace} overwrites the output file if it already exists.  Without
@@ -151,7 +138,7 @@ Use {helpb destring} afterwards for the variables you want as numbers.
 
 {pstd}
 {bf:Variable names.} Repeat-group questions get the instance number added:
-{cmd:age2} is question {cmd:age} for member 2.  For a repeat nested inside
+{cmd:name2} is question {cmd:name} for member 2.  For a repeat nested inside
 another, the numbers are listed innermost first: {cmd:ill_type2_1} is
 question {cmd:ill_type} for illness 2 of member 1 ({cmd:ill_type_2_1} with
 {opt separator}).
@@ -172,19 +159,19 @@ exports with or without "Remove group names" both work.
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Data folder is the current working directory:{p_end}
-{phang2}{cmd:. cd "D:/survey/data"}{p_end}
-{phang2}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx")}{p_end}
-
-{pstd}Data folder given with {opt formloc()}:{p_end}
-{phang2}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data")}{p_end}
+{pstd}Data and XLSForm in different folders; output in the current working directory:{p_end}
+{phang2}{cmd:. cd "D:/survey/clean"}{p_end}
+{phang2}{cmd:. odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx")}{p_end}
 
 {pstd}Run again and overwrite the previous output:{p_end}
-{phang2}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") replace}{p_end}
+{phang2}{cmd:. odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx") replace}{p_end}
 
-{pstd}Save under another name, keep codes as strings, use underscore names:{p_end}
-{phang2}{cmd:. odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") saving("D:/survey/hh_wide.dta", replace) allstring separator}{p_end}
-{phang2}{cmd:. use "D:/survey/hh_wide.dta", clear}{p_end}
+{pstd}Paths relative to a project folder; save under another name:{p_end}
+{phang2}{cmd:. cd "D:/survey"}{p_end}
+{phang2}{cmd:. odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") saving("clean/hh_wide.dta", replace)}{p_end}
+
+{pstd}Keep codes as strings and use underscore names:{p_end}
+{phang2}{cmd:. odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") allstring separator replace}{p_end}
 
 
 {marker results}{...}
@@ -203,6 +190,27 @@ exports with or without "Remove group names" both work.
 {p2col 5 20 24 2: Macros}{p_end}
 {synopt:{cmd:r(fn)}}output file name{p_end}
 {synopt:{cmd:r(unmatched)}}variables not found in the XLSForm{p_end}
+
+
+{marker older}{...}
+{title:Older syntax}
+
+{p 4 4 2}
+The syntax of versions before 1.4.0 still works:
+
+{p 8 16 2}
+{cmd:odkrepeatmerge,}
+{opt formid(string)}
+{opt xls:form(filename)}
+[{opt formloc(path)} {it:options}]
+
+{p 4 4 2}
+{opt formid()} is the main CSV's name without {cmd:.csv}, and
+{opt formloc()} is the folder holding the CSVs (default: current working
+directory).  A bare {opt xlsform()} file name is looked for in
+{opt formloc()}; a name with a folder is used as given.  With this syntax
+the default output is {it:formid}{cmd:.dta} in the {opt formloc()} folder.
+{opt formid()} and {opt formloc()} cannot be combined with {opt using}.
 
 
 {marker author}{...}

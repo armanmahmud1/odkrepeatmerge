@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------------
    audit/examples.do
-   The four examples from odkrepeatmerge.sthlp (v1.3.0). Checks that
+   The examples from odkrepeatmerge.sthlp (v1.4.0). Checks that
    each one is accepted by the parser.
 
    The example files do not exist, so each call should stop with
@@ -15,21 +15,24 @@ version 14
 
 local bad 0
 
-* Example 1: data folder is the current working directory
-* (the "cd" line is not run here; the repo root has no such files)
-capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx")
+* Example 1: data and XLSForm in different folders (the "cd" line is not run)
+capture noisily odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx")
 if inlist(_rc, 197, 198) local bad = `bad' + 1
 
-* Example 2: data folder given with formloc()
-capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data")
+* Example 2: run again and overwrite
+capture noisily odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx") replace
 if inlist(_rc, 197, 198) local bad = `bad' + 1
 
-* Example 3: run again and overwrite
-capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") replace
+* Example 3: relative paths, saving()
+capture noisily odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") saving("clean/hh_wide.dta", replace)
 if inlist(_rc, 197, 198) local bad = `bad' + 1
 
-* Example 4: saving(), allstring, separator
-capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") saving("D:/survey/hh_wide.dta", replace) allstring separator
+* Example 4: allstring, separator
+capture noisily odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") allstring separator replace
+if inlist(_rc, 197, 198) local bad = `bad' + 1
+
+* Older syntax (documented under "Older syntax")
+capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/raw")
 if inlist(_rc, 197, 198) local bad = `bad' + 1
 
 if `bad' {

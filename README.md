@@ -11,73 +11,68 @@ net install odkrepeatmerge, from("https://raw.githubusercontent.com/armanmahmud1
 help odkrepeatmerge
 ```
 
-## Before you run
-Put all input files in **one folder** (the data folder):
-
-```
-D:/survey/data/
-    hh_survey.csv            main (parent) CSV:  formid.csv
-    hh_survey-member.csv     child CSV per repeat group:  formid-groupname.csv
-    hh_survey-illness.csv
-    HH Survey.xlsx           the XLSForm used to collect the data
-```
-
-`odkrepeatmerge` looks for these files in the `formloc()` folder. **If you don't give `formloc()`, it looks in the current working directory, so that directory must be the data folder.** Use one of these:
-
-```stata
-* Option 1: change to the data folder first
-cd "D:/survey/data"
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx")
-
-* Option 2: point to the data folder with formloc()
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data")
-```
-
-Either way, the result is saved in the data folder as `formid.dta` (`hh_survey.dta` here), unless you use `saving()`.
-
 ## Syntax
 ```stata
-odkrepeatmerge, formid(string) xlsform(filename) [formloc(path) saving(filename [, replace]) replace separator allstring]
+odkrepeatmerge using maincsv, xlsform(filename) [saving(filename [, replace]) replace separator allstring]
 ```
 
-### Required options
-| Option | What to give |
+### Required
+| Item | What to give |
 |---|---|
-| `formid()` | The form ID: the main CSV's name without `.csv` (also `form_id` on the XLSForm's settings sheet). Child files must be named `formid-groupname.csv` |
-| `xlsform()` | The XLSForm file name, e.g. `"HH Survey.xlsx"`. Only the file name; the folder comes from `formloc()` or the current directory. (`formtitle()` is the older name and still works) |
+| `using` *maincsv* | The main (parent) CSV with its folder, e.g. `"D:/survey/raw/hh_survey.csv"` (`.csv` may be omitted) |
+| `xlsform()` | The XLSForm with its folder, e.g. `"D:/survey/instrument/HH Survey.xlsx"` (`formtitle()` is the older name and still works) |
 
-### Optional options
+### Optional
 | Option | What it does |
 |---|---|
-| `formloc()` | Data folder holding the XLSForm and CSVs. Default: current working directory. Use forward slashes, e.g. `formloc("D:/My drive/survey")` |
-| `saving(file [, replace])` | Save the result under another name. A name without a folder is saved in the current working directory. Add `, replace` inside to overwrite |
+| `saving(file [, replace])` | Save the result under another name or folder. Add `, replace` inside to overwrite |
 | `replace` | Overwrite the output file if it exists. The command never overwrites without it, so add it when you run again |
 | `separator` | Name variables `q1_11` instead of `q111`. Use it when two questions differ only by trailing digits (`q1`, `q11`); otherwise their names clash and the command stops with an error |
 | `allstring` | Import all columns as strings, so codes like `007` don't become `7`. Use `destring` afterwards where needed |
 
+## Files and folders
+The data and the XLSForm can be in different folders:
+```
+D:/survey/raw/hh_survey.csv            main (parent) CSV
+D:/survey/raw/hh_survey-member.csv     child CSV, repeat "member"
+D:/survey/raw/hh_survey-illness.csv    child CSV, repeat "illness"
+D:/survey/instrument/HH Survey.xlsx    XLSForm
+```
+
+- **Child CSVs must be in the same folder as the main CSV**, named `stem-groupname.csv`, where `stem` is the main CSV's name without `.csv` (`hh_survey`) and `groupname` is the repeat group's name in the XLSForm. This is how ODK Central names them.
+- Paths can be full paths or relative to the current working directory. Use forward slashes.
+- **The output is saved as `stem.dta` (`hh_survey.dta`) in the current working directory**, so nothing is written to the raw data folder. Use `cd` to choose the folder first, or give the output file with `saving()`.
+
 ## Examples
 ```stata
-* data folder is the current working directory
-cd "D:/survey/data"
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx")
-
-* data folder given with formloc()
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data")
+* data and XLSForm in different folders; output in the current directory
+cd "D:/survey/clean"
+odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx")
 
 * run again and overwrite the previous output
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") replace
+odkrepeatmerge using "D:/survey/raw/hh_survey.csv", xlsform("D:/survey/instrument/HH Survey.xlsx") replace
 
-* save under another name, keep codes as strings, use underscore names
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/data") saving("D:/survey/hh_wide.dta", replace) allstring separator
-use "D:/survey/hh_wide.dta", clear
+* paths relative to a project folder; save under another name
+cd "D:/survey"
+odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") saving("clean/hh_wide.dta", replace)
+
+* keep codes as strings and use underscore names
+odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") allstring separator replace
 ```
 
 ## Output
 - One row per submission; variables follow the order of the XLSForm's survey sheet.
-- Repeat questions get the instance number added: `age2` is `age` for member 2. For a nested repeat the numbers are innermost first: `ill_type2_1` is illness 2 of member 1 (`ill_type_2_1` with `separator`).
+- Repeat questions get the instance number added: `name2` is `name` for member 2. For a nested repeat the numbers are innermost first: `ill_type2_1` is illness 2 of member 1 (`ill_type_2_1` with `separator`).
 - Columns not in the XLSForm are placed at the end and listed on screen.
 - ODK Central exports with or without "Remove group names" both work.
 - `r(fn)`, `r(N)`, `r(k)`, `r(n_repeat)`, `r(n_unmatched)` and `r(unmatched)` describe the result.
+
+## Older syntax
+The syntax of versions before 1.4.0 still works:
+```stata
+odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/raw")
+```
+`formid()` is the main CSV's name without `.csv`; `formloc()` is the CSV folder (default: current directory). A bare `xlsform()` name is looked for in `formloc()`; a name with a folder is used as given. With this syntax the default output is `formid.dta` in the `formloc()` folder.
 
 ## Testing
 ```stata

@@ -1,16 +1,11 @@
-*! version 1.3.0 18oct2026 Arman Mahmud
+*! version 1.4.0 18oct2026 Arman Mahmud
 
 program define odkrepeatmerge, rclass
 	version 14
-	syntax, formid(string) [XLSform(string) FORMTitle(string) formloc(string) ///
+	syntax [using/] [, XLSform(string) FORMTitle(string) formid(string) formloc(string) ///
 		SAVing(string asis) REPLACE SEParator ALLstring]
 
-	* --- Input validation ---
-	if `"`formid'"' == "" {
-		display as error "formid() must not be empty"
-		exit 198
-	}
-	* xlsform() is the preferred name; formtitle() is kept as a synonym
+	* --- XLSForm: xlsform() is the preferred name; formtitle() a synonym ---
 	if `"`xlsform'"' == "" {
 		local xlsform `"`formtitle'"'
 	}
@@ -29,18 +24,59 @@ program define odkrepeatmerge, rclass
 	local strimport = cond("`allstring'" != "", "stringcols(_all)", "")
 	local overwrite `replace'
 
-	* --- Build paths (forward slash works on all platforms) ---
-	local form_id "`formid'"
-	local form_name "`xlsform'"
-	if `"`formloc'"' != "" {
-		local form_id "`formloc'/`formid'"
-		local form_name "`formloc'/`xlsform'"
+	* --- Locate the data -------------------------------------------------
+	* form_id  = folder/stem of the CSV files: main is form_id.csv (or the
+	*            using file), repeat group g is form_id-g.csv
+	* form_name = the XLSForm file
+	if `"`using'"' != "" {
+		* new syntax: odkrepeatmerge using main.csv, xlsform(path)
+		if `"`formid'"' != "" | `"`formloc'"' != "" {
+			display as error "with {bf:using}, do not specify formid() or formloc()"
+			exit 198
+		}
+		local mainfile `"`using'"'
+		local __p : subinstr local mainfile "\" "/", all
+		* form_id = the main CSV path without its extension
+		if regexm(`"`__p'"', "^(.*)\.[^./]*$") {
+			local form_id = regexs(1)
+		}
+		else {
+			local form_id `"`__p'"'
+			local mainfile `"`mainfile'.csv"'
+		}
+		* stem = file name part of form_id (used for the default output)
+		if regexm(`"`form_id'"', "([^/]*)$") {
+			local stem = regexs(1)
+		}
+		local form_name `"`xlsform'"'
+		* default output: stem.dta in the current working directory
+		local defsave `"`stem'.dta"'
+	}
+	else {
+		* older syntax: odkrepeatmerge, formid() xlsform() [formloc()]
+		if `"`formid'"' == "" {
+			display as error "specify the main CSV file with {bf:using} (or the older formid() option)"
+			exit 198
+		}
+		local form_id "`formid'"
+		local form_name "`xlsform'"
+		if `"`formloc'"' != "" {
+			local form_id "`formloc'/`formid'"
+			* join formloc() only when xlsform() is a bare file name
+			local __x : subinstr local xlsform "\" "/", all
+			if !strpos(`"`__x'"', "/") & !strpos(`"`__x'"', ":") {
+				local form_name "`formloc'/`xlsform'"
+			}
+		}
+		local mainfile `"`form_id'.csv"'
+		* default output: formid.dta next to the data (as in earlier versions)
+		local defsave `"`form_id'.dta"'
 	}
 
-	confirm file "`form_name'"
-	confirm file "`form_id'.csv"
+	confirm file `"`form_name'"'
+	confirm file `"`mainfile'"'
 
-	* --- Output file: saving(filename [, replace]); default formid.dta ---
+	* --- Output file: saving(filename [, replace]) or the default ---
 	if `"`saving'"' != "" {
 		local 0 `"using `saving'"'
 		capture syntax using/ [, replace]
@@ -52,7 +88,7 @@ program define odkrepeatmerge, rclass
 		if "`replace'" != "" local overwrite replace
 	}
 	else {
-		local savefile `"`form_id'.dta"'
+		local savefile `"`defsave'"'
 	}
 	mata: st_local("__ext", pathsuffix(st_local("savefile")))
 	if `"`__ext'"' == "" local savefile `"`savefile'.dta"'
@@ -164,16 +200,16 @@ qui {
 	* ==================================================================
 	noisily display as input _n "Loading CSV files..."
 
-	import delimited using "`form_id'.csv", clear varnames(1) case(lower) bindquote(strict) encoding("utf-8") `strimport'
+	import delimited using `"`mainfile'"', clear varnames(1) case(lower) bindquote(strict) encoding("utf-8") `strimport'
 	_orm_ungroup, names(`qnamelist' `__sys') groups(`grpnames')
 	capture confirm variable key
 	if _rc {
-		noisily display as error `"`form_id'.csv has no KEY column"'
+		noisily display as error `"`mainfile' has no KEY column"'
 		exit 111
 	}
 	capture isid key
 	if _rc {
-		noisily display as error `"`form_id'.csv: KEY is missing or duplicated in some rows"'
+		noisily display as error `"`mainfile': KEY is missing or duplicated in some rows"'
 		exit 459
 	}
 	save "`main'"

@@ -1,14 +1,14 @@
 # SSC Audit Report: `odkrepeatmerge`
 
-**Package version:** 1.3.0 (18oct2026)
+**Package version:** 1.4.0 (18oct2026)
 **Branch:** V1
 **Developed and tested on:** Stata 17, Windows
 
 ---
 
-## Verdict: code-complete for SSC; awaiting the v1.3.0 test run
+## Verdict: v1.4.0 passes 22 / 22 test files (Stata 17, 2026-10-18). Ready for SSC once the remaining TODOs below are done.
 
-v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 3 blockers and 7 should-fix items, all addressed in v1.3.0 below. Run `do tests/run_all_tests.do` (now 20 test files) to confirm before submitting.
+v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 3 blockers and 7 should-fix items, all addressed in v1.3.0 below. The full suite (2 regressions, certification T01–T10, help-file examples, edge tests E1–E18) passes on v1.4.0.
 
 ---
 
@@ -19,6 +19,7 @@ v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 
 | `tests/regression_nested_order.do` | nested repeat order |
 | `tests/regression_prefix_collision.do` | q1 vs q10 order |
 | `audit/odkrepeatmerge_cert.do` (T01–T10) | basics, preserve, errors, no globals, no stray files |
+| `audit/examples.do` | every example in the help file parses |
 | `tests/edge/E1`–`E11` | realistic export, empty repeats, no repeats, 3 levels, 10+ instances, blank end_repeat names, upper-case KEY, q1/q11 clash, groups/notes, separator, q1/q10 with 10+ instances |
 | `tests/edge/E12_group_prefixed_headers.do` | ODK Central default `group-field` headers; system columns; geopoint parts |
 | `tests/edge/E13_saving_replace_results.do` | no overwrite without `replace`; `saving()`; `r()` results; data in memory untouched |
@@ -26,10 +27,21 @@ v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 
 | `tests/edge/E15_allstring.do` | leading zeros kept |
 | `tests/edge/E16_xlsform_synonym.do` | `xlsform()` / `formtitle()` synonym and conflicts |
 | `tests/edge/E17_maxvar_guard.do` | clear r(900) before exceeding `c(maxvar)` |
+| `tests/edge/E18_using_separate_folders.do` | `using` syntax; data, XLSForm and output in different folders; nothing written to raw/; conflicts; older syntax with a full XLSForm path |
 
 Run everything with: `cd` to the repo root, then `do tests/run_all_tests.do` (log: `tests/run_all_tests.log`).
 
 ---
+
+## v1.4.0 changes (2026-10-18)
+
+| Change | Why | Test |
+|--------|-----|------|
+| New syntax `odkrepeatmerge using maincsv, xlsform(path)` | In real projects the XLSForm (instrument folder) and the data (raw folder) live in different places; `formid()` only served to build CSV file names | E18 |
+| Child CSVs are looked for next to the main CSV (`stem-group.csv`) | Matches ODK Central's export | E18 |
+| Default output `stem.dta` in the current working directory | Raw data folder stays untouched; Stata convention | E18 |
+| Older `formid()`/`formloc()` syntax kept, with its old default output location; a full `xlsform()` path is no longer joined with `formloc()` | Existing scripts keep working | E1–E17, E18 |
+| `using` cannot be combined with `formid()`/`formloc()` (r(198)) | Avoid ambiguous input | E18 |
 
 ## v1.3.0 changes (2026-10-18, from the SSC-readiness review)
 
@@ -141,7 +153,7 @@ wide dataset in questionnaire order
 
 Abstract: odkrepeatmerge combines the main and repeat-group CSV files
 exported from ODK Central into a single Stata dataset with one row per
-submission. It reads the XLSForm to find the repeat groups and their
+submission (syntax: odkrepeatmerge using maincsv, xlsform(file)). It reads the XLSForm to find the repeat groups and their
 nesting, reshapes each group wide (deepest first) using the instance number
 recorded in each row's KEY, merges it into its parent, and orders all
 variables to follow the questionnaire. Nested repeats of any depth, empty
@@ -173,7 +185,7 @@ Arman Mahmud
 | # | Item | Status |
 |---|------|--------|
 | 1 | `.ado` and `.sthlp` present, lowercase, matching names | PASS |
-| 2 | `*! version 1.3.0 18oct2026` in ado and help | PASS |
+| 2 | `*! version 1.4.0 18oct2026` in ado and help | PASS |
 | 3 | `version 14` statement | PASS |
 | 4 | No `program drop`, `clear all`, `set more off`, `cd`, hard-coded paths in ado | PASS |
 | 5 | No global macros; temporary objects are tempfiles/tempnames | PASS (T09, T10) |
@@ -186,7 +198,7 @@ Arman Mahmud
 | 12 | Cross-platform paths | PASS (`/`) |
 | 13 | No SSC name collision | PASS |
 | 14 | `.pkg` / `stata.toc` valid for GitHub `net install` | PASS |
-| 15 | Full test suite passes on v1.3.0 | TODO (run `tests/run_all_tests.do`) |
+| 15 | Full test suite passes on v1.4.0 | PASS (22/22, cert T01–T10, help examples) |
 | 16 | Tested on a real ODK Central export | TODO |
 | 17 | Affiliation filled in email | TODO |
 | 18 | README "testing phase" warning removed | PASS |
