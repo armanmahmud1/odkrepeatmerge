@@ -1,254 +1,350 @@
-*! version 1.1.0 09oct2026 Arman Mahmud
+*! version 1.3.0 18oct2026 Arman Mahmud
 
-program define odkrepeatmerge
+program define odkrepeatmerge, rclass
 	version 14
-	syntax, formid(string) formtitle(string) [formloc(string)]
+	syntax, formid(string) [XLSform(string) FORMTitle(string) formloc(string) ///
+		SAVing(string asis) REPLACE SEParator ALLstring]
 
-	* --- Input validation (M04) ---
+	* --- Input validation ---
 	if `"`formid'"' == "" {
 		display as error "formid() must not be empty"
 		exit 198
 	}
-	if `"`formtitle'"' == "" {
-		display as error "formtitle() must not be empty"
+	* xlsform() is the preferred name; formtitle() is kept as a synonym
+	if `"`xlsform'"' == "" {
+		local xlsform `"`formtitle'"'
+	}
+	else if `"`formtitle'"' != "" & `"`formtitle'"' != `"`xlsform'"' {
+		display as error "specify xlsform() or formtitle(), not both"
+		exit 198
+	}
+	if `"`xlsform'"' == "" {
+		display as error "option xlsform() required"
 		exit 198
 	}
 
-	* --- Build paths using forward slash for cross-platform (M01, C03) ---
+	* separator: put "_" between a question name and its instance number
+	local sep = cond("`separator'" != "", "_", "")
+	* allstring: import every CSV column as string (keeps leading zeros)
+	local strimport = cond("`allstring'" != "", "stringcols(_all)", "")
+	local overwrite `replace'
+
+	* --- Build paths (forward slash works on all platforms) ---
 	local form_id "`formid'"
-	local form_name "`formtitle'"
+	local form_name "`xlsform'"
 	if `"`formloc'"' != "" {
 		local form_id "`formloc'/`formid'"
-		local form_name "`formloc'/`formtitle'"
+		local form_name "`formloc'/`xlsform'"
 	}
 
-	* --- Validate that input files exist (M04) ---
 	confirm file "`form_name'"
 	confirm file "`form_id'.csv"
 
-	* --- Preserve user data (C02) ---
+	* --- Output file: saving(filename [, replace]); default formid.dta ---
+	if `"`saving'"' != "" {
+		local 0 `"using `saving'"'
+		capture syntax using/ [, replace]
+		if _rc {
+			display as error "saving() must be {it:filename} [, replace]"
+			exit 198
+		}
+		local savefile `"`using'"'
+		if "`replace'" != "" local overwrite replace
+	}
+	else {
+		local savefile `"`form_id'.dta"'
+	}
+	mata: st_local("__ext", pathsuffix(st_local("savefile")))
+	if `"`__ext'"' == "" local savefile `"`savefile'.dta"'
+	if "`overwrite'" == "" {
+		capture confirm new file `"`savefile'"'
+		local rc = _rc
+		if `rc' == 602 {
+			display as error `"file `savefile' already exists; specify replace"'
+			exit 602
+		}
+		else if `rc' {
+			display as error `"cannot write `savefile'"'
+			exit `rc'
+		}
+	}
+
 	preserve
 
 qui {
 
-	* form load
-	noisily display as input _n "Form loading and repeat group splitting initiated..."
+	* ==================================================================
+	* 1. Read the XLSForm: repeat structure + question order
+	* ==================================================================
+	noisily display as input _n "Reading the XLSForm..."
 
-	tempfile survey_rows
-	import excel using "`form_name'", firstrow clear
-	save `survey_rows'
-	keep if type == "begin_repeat" | type == "begin repeat"
-	levelsof name, local(rep_group)
-
-	noisily display as result "Form loading and repeat group splitting done"
-
-
-	* All file load
-	noisily display as input _n "All repeat group data loading initiated..."
-
-	local key_len = ""
-
-	foreach x of local rep_group {
-		confirm file "`form_id'-`x'.csv"
-		import delimited using "`form_id'-`x'.csv", clear
-		confirm variable key parent_key
-		local l_key_`x' = length(key[1])
-		local key_length = length(key[1])
-		local key_len `key_len' `key_length'
-		tempfile r_`x'
-		save `r_`x''
+	capture import excel using "`form_name'", sheet("survey") firstrow case(lower) allstring clear
+	if _rc {
+		import excel using "`form_name'", firstrow case(lower) allstring clear
 	}
-
-	* save main data as dta
-	import delimited using "`form_id'.csv", clear
-	save "`form_id'.dta", replace
-
-	noisily display as result "All repeat group data loading done"
-
-	* Sort the key length
-	clear
-	tempfile blank_file
-	save `blank_file', emptyok replace
-	use `blank_file', clear
-	local wc : word count `key_len'
-	if `wc' > 0 {
-		set obs `wc'
+	capture confirm variable type name
+	if _rc {
+		noisily display as error "The XLSForm survey sheet must have columns named type and name"
+		exit 111
 	}
-	else {
-		set obs 1
-	}
-	generate num = ""
-
-	forvalues i = 1/`wc' {
-		replace num = word("`key_len'", `i') in `i'
-	}
-
-	duplicates drop num, force
-	destring num, replace
-	drop if num == .
-	gsort -num
-
-	* descending order sort
-	generate N = _N
-	generate n = _n
-	local sorted_key_len
-
-	forvalues i = 1/`=_N' {
-		local sorted_key_len `sorted_key_len' `=num[`i']'
-	}
-
-	* identify most child dataset and rename — use tempfiles (C08)
-	local i = 1
-
-	foreach len of local sorted_key_len {
-		foreach x of local rep_group {
-			if `l_key_`x'' == `len' {
-				use `r_`x'', clear
-				generate _orm_file = regexs(1) if regexm(key, "/([a-zA-Z0-9_]+)\[[0-9]+\]$")
-				generate _orm_mother = regexs(1) if regexm(parent_key, "/([a-zA-Z0-9_]+)\[[0-9]+\]$")
-				levelsof _orm_file, local(f)
-				drop _orm_file
-				tempfile tf_`f'
-				save `tf_`f'', replace
-				local ++i
-			}
-		}
-	}
-
-	* merge all nested child dataset
-	noisily display as input _n "All nested group data merge initiated..."
-
-	foreach len of local sorted_key_len {
-		foreach x of local rep_group {
-			if `l_key_`x'' == `len' {
-				use `tf_`x'', clear
-				drop key
-				rename parent_key key
-
-				if _orm_mother != "" {
-					levelsof _orm_mother, local(mother)
-
-					drop _orm_mother
-					sort key, stable
-					** reshape
-					bysort key: generate _orm_j = _n
-					ds key _orm_j, not
-					reshape wide `r(varlist)', i(key) j(_orm_j)
-
-					rename * *_
-					rename key_ key
-					tempfile child
-					save `child'
-
-					foreach y of local mother {
-						use `tf_`y'', clear
-						merge 1:1 key using `child', nogen
-						save `tf_`y'', replace
-					}
-				}
-			}
-		}
-	}
-
-	noisily display as result "All nested group data merge done"
-
-	* merge all child dataset with main data
-	noisily display as input _n "Nested group data merge with main data initiated..."
-
-	foreach len of local sorted_key_len {
-		foreach x of local rep_group {
-			if `l_key_`x'' == `len' {
-				use `tf_`x'', clear
-				drop key
-				rename parent_key key
-
-				if _orm_mother == "" {
-					drop _orm_mother
-					sort key, stable
-					** reshape
-					bysort key: generate _orm_j = _n
-					ds key _orm_j, not
-					reshape wide `r(varlist)', i(key) j(_orm_j)
-
-					tempfile child
-					save `child'
-
-					use "`form_id'.dta", clear
-					merge 1:1 key using `child', nogen
-					save "`form_id'.dta", replace
-				}
-			}
-		}
-	}
-
-	tempfile without_order_merged
-	save `without_order_merged'
-
-
-	* order all variables
-	tempfile question_meta variable_order
-	tempname qh oh
-	use `survey_rows', clear
 	keep type name
 	replace type = lower(trim(itrim(type)))
 	replace name = trim(itrim(name))
-	drop if name == ""
+	drop if type == ""
+	* keep end_repeat / end_group rows even when their name cell is blank
+	drop if name == "" & !inlist(type, "end_repeat", "end repeat", "end_group", "end group")
 
-	postfile `qh' str128 qname str244 qtemplate int qdepth long qseq using `question_meta', replace
+	tempfile question_meta variable_order main
+	tempname qh oh
+	postfile `qh' str244 qname str244 qtemplate int qdepth long qseq using "`question_meta'", replace
+
 	local depth = 0
 	local pos0 = 0
-	local path0 ""
 	local templ0 ""
+	local rstack0 ""
 	local qseq = 0
+	local G = 0
+	local maxgdepth = 0
+	local qnamelist
+	local grpnames meta
+	* ODK Central system columns: expected to be absent from the XLSForm
+	local __sys submissiondate submitterid submittername attachmentspresent ///
+		attachmentsexpected status reviewstate deviceid edits formversion ///
+		instanceid instancename metainstanceid meta_instanceid ///
+		metainstancename meta_instancename
 
 	forvalues x = 1/`=_N' {
-		local __type "`=type[`x']'"
-		local __name "`=name[`x']'"
+		local __type = type[`x']
+		local __oname = name[`x']
+		local __name = lower(name[`x'])
+
+		if inlist("`__type'", "begin_group", "begin group", "begin_repeat", "begin repeat") {
+			local grpnames `grpnames' `__name'
+		}
 
 		if inlist("`__type'", "begin_repeat", "begin repeat") {
 			local pos`depth' = `pos`depth'' + 1
-			local __nextdepth = `depth' + 1
-			local __templ = cond("`templ`depth''" == "", "`pos`depth''", "`templ`depth'' `pos`depth''")
-			local depth = `__nextdepth'
+			local __templ = trim("`templ`depth'' `pos`depth''")
+			local ++G
+			local gname`G' "`__oname'"
+			local gparent`G' "`rstack`depth''"
+			local gactive`G' 0
+			local depth = `depth' + 1
+			local gdepth`G' = `depth'
+			if `depth' > `maxgdepth' local maxgdepth = `depth'
 			local templ`depth' "`__templ'"
-			local path`depth' "`__name'"
+			local rstack`depth' "`__oname'"
 			local pos`depth' = 0
 		}
 		else if inlist("`__type'", "end_repeat", "end repeat") {
-			local pos`depth' = 0
-			local templ`depth' ""
-			local path`depth' ""
-			local depth = `depth' - 1
+			if `depth' > 0 local depth = `depth' - 1
 		}
 		else if !inlist("`__type'", "note", "begin_group", "begin group", "end_group", "end group") {
 			local pos`depth' = `pos`depth'' + 1
 			local ++qseq
-			local __templ = cond("`templ`depth''" == "", "`pos`depth''", "`templ`depth'' `pos`depth''")
+			local __templ = trim("`templ`depth'' `pos`depth''")
 			post `qh' ("`__name'") ("`__templ'") (`depth') (`qseq')
+			local qnamelist `qnamelist' `__name'
 		}
 	}
 	postclose `qh'
 
-	noisily display as result "Nested group data merge with main data done"
+	* parent index of each repeat group (0 = top level)
+	forvalues g = 1/`G' {
+		local gpidx`g' 0
+		forvalues h = 1/`G' {
+			if "`gparent`g''" != "" & "`gname`h''" == "`gparent`g''" local gpidx`g' `h'
+		}
+	}
 
-	* ordering
-	noisily display as input _n "Data ordering initiated..."
+	noisily display as result "Found `G' repeat group(s)"
 
-	use `without_order_merged', clear
+	* ==================================================================
+	* 2. Load the main CSV and every repeat-group CSV
+	* ==================================================================
+	noisily display as input _n "Loading CSV files..."
+
+	import delimited using "`form_id'.csv", clear varnames(1) case(lower) bindquote(strict) encoding("utf-8") `strimport'
+	_orm_ungroup, names(`qnamelist' `__sys') groups(`grpnames')
+	capture confirm variable key
+	if _rc {
+		noisily display as error `"`form_id'.csv has no KEY column"'
+		exit 111
+	}
+	capture isid key
+	if _rc {
+		noisily display as error `"`form_id'.csv: KEY is missing or duplicated in some rows"'
+		exit 459
+	}
+	save "`main'"
+
+	forvalues g = 1/`G' {
+		local fn "`form_id'-`gname`g''.csv"
+		capture confirm file "`fn'"
+		if _rc {
+			noisily display as error `"Repeat-group file not found: `fn'"'
+			exit 601
+		}
+		import delimited using "`fn'", clear varnames(1) case(lower) bindquote(strict) encoding("utf-8") `strimport'
+		if _N == 0 {
+			noisily display as text "  note: `gname`g'' has no rows - skipped"
+			continue
+		}
+		capture confirm variable key parent_key
+		if _rc {
+			noisily display as error `"`fn' must have KEY and PARENT_KEY columns"'
+			exit 111
+		}
+		_orm_ungroup, names(`qnamelist' `__sys') groups(`grpnames')
+		local gactive`g' 1
+		ds key parent_key, not
+		local own`g' `r(varlist)'
+		tempfile tf`g'
+		save "`tf`g''"
+	}
+
+	noisily display as result "CSV files loaded"
+
+	* ==================================================================
+	* 3. Reshape + merge, deepest groups first
+	* ==================================================================
+	noisily display as input _n "Merging repeat groups (deepest first)..."
+
+	if `maxgdepth' > 0 {
+	forvalues dd = `maxgdepth'(-1)1 {
+		forvalues g = 1/`G' {
+			if `gdepth`g'' != `dd' continue
+			if !`gactive`g'' continue
+
+			use "`tf`g''", clear
+
+			* instance number = the [n] at the end of KEY (not row order)
+			generate long _orm_j = real(regexs(1)) if regexm(key, "\[([0-9]+)\]$")
+			count if missing(_orm_j)
+			if r(N) > 0 {
+				noisily display as error "`gname`g'': could not read the instance number [n] from KEY"
+				exit 459
+			}
+			drop key
+			rename parent_key key
+
+			if "`sep'" != "" {
+				foreach v of local own`g' {
+					if length("`v'`sep'") > 32 {
+						noisily display as error "`v'`sep' would exceed 32 characters; shorten question `v'"
+						exit 198
+					}
+					rename `v' `v'`sep'
+				}
+			}
+
+			ds key _orm_j, not
+			local stubs `r(varlist)'
+			if "`stubs'" == "" continue
+
+			* name-length check (nested names get one more "_" later)
+			levelsof _orm_j, local(jvals)
+			local maxlen = cond(`gpidx`g'' > 0, 31, 32)
+			foreach s of local stubs {
+				foreach j of local jvals {
+					if length("`s'`j'") > `maxlen' {
+						noisily display as error "`s'`j' (repeat group `gname`g'') would exceed Stata's 32-character name limit; shorten the question name"
+						exit 198
+					}
+				}
+			}
+
+			* variable-limit check: reshape wide multiplies variables
+			local __ns : word count `stubs'
+			local __nj : word count `jvals'
+			local __newk = c(k) - `__ns' - 1 + `__ns' * `__nj'
+			if `__newk' > c(maxvar) {
+				noisily display as error "Repeat group `gname`g'' needs `__newk' variables in wide form; the limit is `c(maxvar)'."
+				noisily display as error "Raise it with {cmd:set maxvar} (Stata SE/MP) or drop unneeded questions."
+				exit 900
+			}
+
+			capture reshape wide `stubs', i(key) j(_orm_j)
+			if _rc {
+				local rc = _rc
+				noisily display as error "reshape wide failed for repeat group `gname`g'' (r(`rc'))."
+				if "`sep'" == "" {
+					noisily display as error "If two questions differ only by trailing digits (e.g. q1 and q11), re-run with the separator option."
+				}
+				exit `rc'
+			}
+
+			if `gpidx`g'' > 0 {
+				rename * *_
+				rename key_ key
+			}
+			ds key, not
+			local childvars `r(varlist)'
+			tempfile child
+			save "`child'"
+
+			local p = `gpidx`g''
+			if `p' > 0 {
+				if !`gactive`p'' {
+					noisily display as text "  note: `gname`g'' has rows but parent `gname`p'' has none - dropped"
+					continue
+				}
+				use "`tf`p''", clear
+			}
+			else {
+				use "`main'", clear
+			}
+
+			foreach v of local childvars {
+				capture confirm variable `v', exact
+				if !_rc {
+					noisily display as error "Variable `v' (from repeat group `gname`g'') already exists in the parent data."
+					if "`sep'" == "" {
+						noisily display as error "Re-run with the separator option to keep repeat names distinct (e.g. q_1)."
+					}
+					exit 110
+				}
+			}
+			local __nc : word count `childvars'
+			if c(k) + `__nc' + 1 > c(maxvar) {
+				noisily display as error "Merging repeat group `gname`g'' needs more than `c(maxvar)' variables."
+				noisily display as error "Raise the limit with {cmd:set maxvar} (Stata SE/MP) or drop unneeded questions."
+				exit 900
+			}
+
+			merge 1:1 key using "`child'", generate(_orm_m)
+			count if _orm_m == 2
+			if r(N) > 0 {
+				noisily display as text "  note: `r(N)' `gname`g'' row(s) had no matching parent and were dropped"
+			}
+			drop if _orm_m == 2
+			drop _orm_m
+
+			if `p' > 0 save "`tf`p''", replace
+			else save "`main'", replace
+		}
+	}
+	}   // maxgdepth > 0
+
+	noisily display as result "Merge done"
+
+	* ==================================================================
+	* 4. Order variables to follow the questionnaire
+	* ==================================================================
+	noisily display as input _n "Ordering variables..."
+
+	use "`main'", clear
 	unab allvars : _all
-	local allvars `allvars'
 
-	use `question_meta', clear
+	use "`question_meta'", clear
 	local qcount = _N
 	local maxdepth = 0
 	forvalues x = 1/`qcount' {
-		local qname`x' "`=qname[`x']'"
-		local qtemplate`x' "`=qtemplate[`x']'"
+		local qname`x' = qname[`x']
+		local qtemplate`x' = qtemplate[`x']
 		local qdepth`x' = qdepth[`x']
 		local qseq`x' = qseq[`x']
-		if `qdepth`x'' > `maxdepth' {
-			local maxdepth = `qdepth`x''
-		}
+		if `qdepth`x'' > `maxdepth' local maxdepth = `qdepth`x''
 	}
 
 	local maxkey = 2 * `maxdepth' + 1
@@ -256,8 +352,9 @@ qui {
 	forvalues x = 1/`maxkey' {
 		local keydefs `keydefs' long k`x'
 	}
-	postfile `oh' str128 actual byte grp byte matched int origseq long qseq `keydefs' using `variable_order', replace
+	postfile `oh' str128 actual byte grp byte matched long origseq long qseq `keydefs' using "`variable_order'", replace
 
+	local unmatched
 	local origseq = 0
 	foreach x of local allvars {
 		local ++origseq
@@ -268,105 +365,158 @@ qui {
 				local __postkeys `__postkeys' (.)
 			}
 			post `oh' ("`x'") (0) (0) (`origseq') (.) `__postkeys'
+			continue
 		}
-		else {
-			local bestname
-			local besttempl
-			local bestdepth = .
-			local bestqseq = .
-			local besttuple
-			local bestlen = -1
 
-			forvalues i = 1/`qcount' {
-				local __qname "`qname`i''"
-				local __qdepth = `qdepth`i''
-				local __suffix = substr("`x'", `=length("`__qname'") + 1', .)
+		local besttempl
+		local bestdepth = .
+		local bestqseq = .
+		local besttuple
+		local bestlen = -1
 
-				if strpos("`x'", "`__qname'") == 1 {
-					if `__qdepth' == 0 {
-						if "`__suffix'" == "" & length("`__qname'") > `bestlen' {
-							local bestname "`__qname'"
-							local besttempl "`qtemplate`i''"
-							local bestdepth = `__qdepth'
-							local bestqseq = `qseq`i''
-							local besttuple
-							local bestlen = length("`__qname'")
-						}
-					}
-					else if regexm("`__suffix'", "^[0-9]+(_[0-9]+)*$") {
-						local __suffix_words : subinstr local __suffix "_" " ", all
-						local __word_count : word count `__suffix_words'
+		forvalues i = 1/`qcount' {
+			local __qname "`qname`i''"
+			if strpos("`x'", "`__qname'") != 1 continue
+			local __qdepth = `qdepth`i''
+			local __suffix = substr("`x'", length("`__qname'") + 1, .)
 
-						if `__word_count' == `__qdepth' & length("`__qname'") > `bestlen' {
-							local __tuple
-							forvalues j = `__word_count'(-1)1 {
-								local __piece : word `j' of `__suffix_words'
-								local __tuple `__tuple' `__piece'
-							}
-
-							local bestname "`__qname'"
-							local besttempl "`qtemplate`i''"
-							local bestdepth = `__qdepth'
-							local bestqseq = `qseq`i''
-							local besttuple "`__tuple'"
-							local bestlen = length("`__qname'")
-						}
-					}
+			if `__qdepth' == 0 {
+				if "`__suffix'" == "" & length("`__qname'") > `bestlen' {
+					local besttempl "`qtemplate`i''"
+					local bestdepth = 0
+					local bestqseq = `qseq`i''
+					local besttuple
+					local bestlen = length("`__qname'")
 				}
+				continue
 			}
 
-			local __postkeys
-			if `bestlen' >= 0 {
-				forvalues j = 1/`maxkey' {
-					local kval`j' .
-				}
+			if "`sep'" != "" {
+				if substr("`__suffix'", 1, 1) != "`sep'" continue
+				local __suffix = substr("`__suffix'", 2, .)
+			}
+			* instance numbers never start with 0 (keeps q1#10 = q110 apart from q10)
+			if !regexm("`__suffix'", "^[1-9][0-9]*(_[1-9][0-9]*)*$") continue
 
-				if `bestdepth' == 0 {
-					local __lastpos : word 1 of `besttempl'
-					local kval1 = `__lastpos'
+			local __suffix_words : subinstr local __suffix "_" " ", all
+			local __word_count : word count `__suffix_words'
+			if `__word_count' == `__qdepth' & length("`__qname'") > `bestlen' {
+				* suffix is innermost-first; reverse to outermost-first
+				local __tuple
+				forvalues j = `__word_count'(-1)1 {
+					local __piece : word `j' of `__suffix_words'
+					local __tuple `__tuple' `__piece'
 				}
-				else {
-					forvalues j = 1/`bestdepth' {
-						local __posword : word `j' of `besttempl'
-						local __instword : word `j' of `besttuple'
-						local __k1 = 2 * `j' - 1
-						local __k2 = 2 * `j'
-						local kval`__k1' = `__posword'
-						local kval`__k2' = `__instword'
-					}
-					local __lastindex = `bestdepth' + 1
-					local __lastpos : word `__lastindex' of `besttempl'
-					local __kfinal = 2 * `bestdepth' + 1
-					local kval`__kfinal' = `__lastpos'
-				}
+				local besttempl "`qtemplate`i''"
+				local bestdepth = `__qdepth'
+				local bestqseq = `qseq`i''
+				local besttuple "`__tuple'"
+				local bestlen = length("`__qname'")
+			}
+		}
 
-				forvalues j = 1/`maxkey' {
-					local __postkeys `__postkeys' (`kval`j'')
-				}
-				post `oh' ("`x'") (1) (1) (`origseq') (`bestqseq') `__postkeys'
+		local __postkeys
+		if `bestlen' >= 0 {
+			forvalues j = 1/`maxkey' {
+				local kval`j' .
+			}
+			if `bestdepth' == 0 {
+				local kval1 : word 1 of `besttempl'
 			}
 			else {
-				forvalues j = 1/`maxkey' {
-					local __postkeys `__postkeys' (.)
+				forvalues j = 1/`bestdepth' {
+					local __k1 = 2 * `j' - 1
+					local __k2 = 2 * `j'
+					local kval`__k1' : word `j' of `besttempl'
+					local kval`__k2' : word `j' of `besttuple'
 				}
-				post `oh' ("`x'") (2) (0) (`origseq') (.) `__postkeys'
+				local __lastindex = `bestdepth' + 1
+				local __kfinal = 2 * `bestdepth' + 1
+				local kval`__kfinal' : word `__lastindex' of `besttempl'
 			}
+			forvalues j = 1/`maxkey' {
+				local __postkeys `__postkeys' (`kval`j'')
+			}
+			post `oh' ("`x'") (1) (1) (`origseq') (`bestqseq') `__postkeys'
+		}
+		else {
+			forvalues j = 1/`maxkey' {
+				local __postkeys `__postkeys' (.)
+			}
+			post `oh' ("`x'") (2) (0) (`origseq') (.) `__postkeys'
+			local __issys : list posof "`x'" in __sys
+			if !`__issys' local unmatched `unmatched' `x'
 		}
 	}
 	postclose `oh'
 
-	use `variable_order', clear
+	use "`variable_order'", clear
 	sort grp k1-k`maxkey' qseq origseq
 	local ordered_varlist
 	forvalues x = 1/`=_N' {
 		local ordered_varlist `ordered_varlist' `=actual[`x']'
 	}
 
-	use `without_order_merged', clear
+	use "`main'", clear
 	order `ordered_varlist'
-	save "`form_id'.dta", replace
+	save `"`savefile'"', replace
+	local N = _N
+	local K = c(k)
 
-	noisily display as result "Data ordering done"
+	noisily display as result "Ordering done"
+
+	local n_unmatched : word count `unmatched'
+	if `n_unmatched' > 0 {
+		local __show
+		forvalues i = 1/`=min(`n_unmatched', 20)' {
+			local __w : word `i' of `unmatched'
+			local __show `__show' `__w'
+		}
+		if `n_unmatched' > 20 local __show `__show' ...
+		noisily display as text _n "Note: `n_unmatched' variable(s) not found in the XLSForm were placed at the end:"
+		noisily display as text "  `__show'"
+		noisily display as text "  If unexpected, check that the XLSForm version matches the data."
+	}
+
+	noisily display as result _n `"Saved `savefile' (`N' obs, `K' vars)"'
 
 }   // qui closing
+
+	return local fn `"`savefile'"'
+	return local unmatched `"`unmatched'"'
+	return scalar N = `N'
+	return scalar k = `K'
+	return scalar n_repeat = `G'
+	return scalar n_unmatched = `n_unmatched'
+end
+
+
+* Rename group-prefixed CSV columns (ODK Central default: group-question)
+* back to the XLSForm field name. import delimited keeps the original
+* header in the variable label; rename only when the last "-" segment is a
+* field in the form (or a Central system column such as meta-instanceID),
+* every earlier segment is a group/repeat name from the form (so geopoint
+* parts such as gps-Latitude are left alone), and the new name is free.
+program define _orm_ungroup
+	version 14
+	syntax [, names(string) groups(string)]
+	foreach v of varlist _all {
+		local lab : variable label `v'
+		if !regexm(`"`lab'"', "^(.+)-([^-]+)$") continue
+		local prefix = lower(regexs(1))
+		local new = lower(strtoname(regexs(2)))
+		if "`new'" == "`v'" continue
+		local prefix : subinstr local prefix "-" " ", all
+		local okprefix 1
+		foreach p of local prefix {
+			local isgrp : list posof "`p'" in groups
+			if !`isgrp' local okprefix 0
+		}
+		if !`okprefix' continue
+		local inform : list posof "`new'" in names
+		if !`inform' continue
+		capture confirm new variable `new'
+		if _rc continue
+		rename `v' `new'
+	}
 end
