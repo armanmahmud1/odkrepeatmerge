@@ -24,7 +24,7 @@ file open `fh' using "`d'/f.csv", write replace text
 file write `fh' "key,q1,q2" _n "u1,a,b" _n "u2,c,d" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 local want "key q1 q2"

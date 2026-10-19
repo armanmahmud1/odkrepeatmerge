@@ -7,7 +7,6 @@
 {viewerjumpto "Remarks" "odkrepeatmerge##remarks"}{...}
 {viewerjumpto "Examples" "odkrepeatmerge##examples"}{...}
 {viewerjumpto "Stored results" "odkrepeatmerge##results"}{...}
-{viewerjumpto "Older syntax" "odkrepeatmerge##older"}{...}
 {viewerjumpto "Author" "odkrepeatmerge##author"}{...}
 {hline}
 help for {bf:odkrepeatmerge} {right:version 1.4.0 18oct2026}
@@ -206,27 +205,6 @@ that would clash, names longer than 32 characters, and data wider than
 {p2col 5 20 24 2: Macros}{p_end}
 {synopt:{cmd:r(fn)}}output file name{p_end}
 {synopt:{cmd:r(unmatched)}}variables not found in the XLSForm{p_end}
-
-
-{marker older}{...}
-{title:Older syntax}
-
-{p 4 4 2}
-The syntax of versions before 1.4.0 still works:
-
-{p 8 16 2}
-{cmd:odkrepeatmerge,}
-{opt formid(string)}
-{opt xls:form(filename)}
-[{opt formloc(path)} {it:options}]
-
-{p 4 4 2}
-{opt formid()} is the main CSV's name without {cmd:.csv}, and
-{opt formloc()} is the folder holding the CSVs (default: current working
-directory).  A bare {opt xlsform()} file name is looked for in
-{opt formloc()}; a name with a folder is used as given.  With this syntax
-the default output is {it:formid}{cmd:.dta} in the {opt formloc()} folder.
-{opt formid()} and {opt formloc()} cannot be combined with {opt using}.
 
 
 {marker author}{...}

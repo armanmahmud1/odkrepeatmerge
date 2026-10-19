@@ -35,7 +35,7 @@ generate q1         = "a" + string(_n)
 generate q10        = "b" + string(_n)
 export delimited using "`d'/f-r.csv", replace
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 local want "key"

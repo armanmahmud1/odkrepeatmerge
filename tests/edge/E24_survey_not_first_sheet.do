@@ -39,7 +39,7 @@ file open `fh' using "`d'/f-r.csv", write replace text
 file write `fh' "key,parent_key,q2" _n "u1/r[1],u1,B" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 assert q1 == "A" & q21 == "B"

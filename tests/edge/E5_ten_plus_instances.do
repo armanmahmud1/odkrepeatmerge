@@ -44,7 +44,7 @@ generate parent_key = "u1/hh[" + string(_n) + "]"
 generate p_q        = "p" + string(_n)
 export delimited using "`d'/f-person.csv", replace
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 confirm variable hh_q1 hh_q2 hh_q10 hh_q11 p_q1_1 p_q1_2 p_q1_10

@@ -23,12 +23,12 @@ file open `fh' using "`d'/f.csv", write replace text
 file write `fh' "key,q1" _n "u1,a" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
+odkrepeatmerge using "`d'/f.csv", formtitle("`d'/f.xlsx") saving("`d'/f.dta", replace)
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") formtitle("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
-capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formtitle("g.xlsx") formloc("`d'") replace
+capture odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") formtitle("`d'/g.xlsx") saving("`d'/f.dta", replace)
 assert _rc == 198
-capture odkrepeatmerge, formid("f") formloc("`d'") replace
+capture odkrepeatmerge using "`d'/f.csv", saving("`d'/f.dta", replace)
 assert _rc == 198
 display as result "E16 PASS: xlsform()/formtitle() synonym"

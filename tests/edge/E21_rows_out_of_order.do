@@ -36,7 +36,7 @@ file write `fh' "u1/r[1],u1,FIRST" _n
 file write `fh' "u1/r[2],u1,SECOND" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 * Instance numbers from KEY, not row order

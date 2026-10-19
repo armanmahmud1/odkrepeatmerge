@@ -36,7 +36,7 @@ generate q11        = "b" + string(_n)
 export delimited using "`d'/f-r.csv", replace
 
 * default naming: must stop with an error, not lose data silently
-capture odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+capture odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 if _rc == 0 {
 	display as error "Default naming should have stopped on the q1#11 / q11#1 collision"
 	exit 9
@@ -44,7 +44,7 @@ if _rc == 0 {
 display as text "default naming correctly refused (r`=_rc')"
 
 * separator option: q1_11 and q11_1 are distinct
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") separator replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace) separator
 use "`d'/f.dta", clear
 local want "key"
 forvalues i = 1/11 {

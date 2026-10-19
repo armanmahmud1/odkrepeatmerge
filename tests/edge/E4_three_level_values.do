@@ -47,7 +47,7 @@ file write `fh' "u1/a[1]/b[1]/c[2],u1/a[1]/b[1],C112" _n
 file write `fh' "u1/a[2]/b[1]/c[1],u1/a[2]/b[1],C211" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 * naming: c_q<c>_<b>_<a>, b_q<b>_<a>, a_q<a>

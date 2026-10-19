@@ -40,7 +40,7 @@ forvalues i = 1/`nq' {
 }
 export delimited using "`d'/f-r.csv", replace
 
-capture noisily odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+capture noisily odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 if _rc != 900 {
 	display as error "expected r(900) from the maxvar guard; got r(`=_rc')"
 	exit 9

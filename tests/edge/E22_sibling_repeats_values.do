@@ -41,7 +41,7 @@ file write `fh' "key,parent_key,item" _n
 file write `fh' "u1/asset[1],u1,Radio" _n "u1/asset[2],u1,Phone" _n "u1/asset[3],u1,Bike" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 * Check values

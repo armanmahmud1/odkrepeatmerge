@@ -75,13 +75,6 @@ odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") a
 - Child CSVs with no rows are skipped; child rows whose parent is not in the data are dropped and counted on screen.
 - `r(fn)`, `r(N)`, `r(k)`, `r(n_repeat)`, `r(n_unmatched)` and `r(unmatched)` describe the result.
 
-## Older syntax
-The syntax of versions before 1.4.0 still works:
-```stata
-odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/raw")
-```
-`formid()` is the main CSV's name without `.csv`; `formloc()` is the CSV folder (default: current directory). A bare `xlsform()` name is looked for in `formloc()`; a name with a folder is used as given. With this syntax the default output is `formid.dta` in the `formloc()` folder.
-
 ## Version history
 | Version | Changes |
 |---|---|

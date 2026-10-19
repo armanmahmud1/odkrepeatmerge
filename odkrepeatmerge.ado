@@ -2,7 +2,7 @@
 
 program define odkrepeatmerge, rclass
 	version 14
-	syntax [using/] [, XLSform(string) FORMTitle(string) formid(string) formloc(string) ///
+	syntax using/ [, XLSform(string) FORMTitle(string) ///
 		SAVing(string asis) REPLACE SEParator ALLstring]
 
 	* --- XLSForm: xlsform() is the preferred name; formtitle() a synonym ---
@@ -25,53 +25,26 @@ program define odkrepeatmerge, rclass
 	local overwrite `replace'
 
 	* --- Locate the data -------------------------------------------------
-	* form_id  = folder/stem of the CSV files: main is form_id.csv (or the
-	*            using file), repeat group g is form_id-g.csv
+	* form_id  = folder/stem of the CSV files: main is form_id.csv,
+	*            repeat group g is form_id-g.csv
 	* form_name = the XLSForm file
-	if `"`using'"' != "" {
-		* new syntax: odkrepeatmerge using main.csv, xlsform(path)
-		if `"`formid'"' != "" | `"`formloc'"' != "" {
-			display as error "with {bf:using}, do not specify formid() or formloc()"
-			exit 198
-		}
-		local mainfile `"`using'"'
-		local __p : subinstr local mainfile "\" "/", all
-		* form_id = the main CSV path without its extension
-		if regexm(`"`__p'"', "^(.*)\.[^./]*$") {
-			local form_id = regexs(1)
-		}
-		else {
-			local form_id `"`__p'"'
-			local mainfile `"`mainfile'.csv"'
-		}
-		* stem = file name part of form_id (used for the default output)
-		if regexm(`"`form_id'"', "([^/]*)$") {
-			local stem = regexs(1)
-		}
-		local form_name `"`xlsform'"'
-		* default output: stem.dta in the current working directory
-		local defsave `"`stem'.dta"'
+	local mainfile `"`using'"'
+	local __p : subinstr local mainfile "\" "/", all
+	* form_id = the main CSV path without its extension
+	if regexm(`"`__p'"', "^(.*)\.[^./]*$") {
+		local form_id = regexs(1)
 	}
 	else {
-		* older syntax: odkrepeatmerge, formid() xlsform() [formloc()]
-		if `"`formid'"' == "" {
-			display as error "specify the main CSV file with {bf:using} (or the older formid() option)"
-			exit 198
-		}
-		local form_id "`formid'"
-		local form_name "`xlsform'"
-		if `"`formloc'"' != "" {
-			local form_id "`formloc'/`formid'"
-			* join formloc() only when xlsform() is a bare file name
-			local __x : subinstr local xlsform "\" "/", all
-			if !strpos(`"`__x'"', "/") & !strpos(`"`__x'"', ":") {
-				local form_name "`formloc'/`xlsform'"
-			}
-		}
-		local mainfile `"`form_id'.csv"'
-		* default output: formid.dta next to the data (as in earlier versions)
-		local defsave `"`form_id'.dta"'
+		local form_id `"`__p'"'
+		local mainfile `"`mainfile'.csv"'
 	}
+	* stem = file name part of form_id (used for the default output)
+	if regexm(`"`form_id'"', "([^/]*)$") {
+		local stem = regexs(1)
+	}
+	local form_name `"`xlsform'"'
+	* default output: stem.dta in the current working directory
+	local defsave `"`stem'.dta"'
 
 	confirm file `"`form_name'"'
 	confirm file `"`mainfile'"'
