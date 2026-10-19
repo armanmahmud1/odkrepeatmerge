@@ -1,0 +1,10 @@
+# Stata test scratch output (recreated on every test run)
+tests/tmp_*/
+tests/tests/
+tests/run_all_tests.log
+audit/tmp_*/
+audit/*.log
+*.dta
+
+# Local tool settings
+.claude/settings.local.json
