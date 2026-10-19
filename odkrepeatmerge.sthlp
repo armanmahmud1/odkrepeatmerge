@@ -87,6 +87,11 @@ File names can be full paths or paths relative to the current working
 directory.  Forward slashes work on all platforms.
 
 {p 4 4 2}
+Use the files as downloaded from ODK Central: the main CSV needs a
+{cmd:KEY} column, and each child CSV needs {cmd:KEY} and {cmd:PARENT_KEY}.
+Use the XLSForm version that collected the data.
+
+{p 4 4 2}
 The output is saved as {it:stem}{cmd:.dta} ({cmd:hh_survey.dta} above) in
 the {bf:current working directory}, so nothing is written to the raw data
 folder.  Use {cmd:cd} to choose the folder first, or give the output file
@@ -151,9 +156,20 @@ screen.  ODK Central system columns such as {cmd:SubmissionDate} are placed at
 the end without being listed.
 
 {pstd}
+{bf:Instance numbers.} Instance numbers are read from the {cmd:[}{it:n}{cmd:]}
+at the end of {cmd:KEY}, so {cmd:member[3]} is always instance 3, even if
+earlier instances were deleted or rows are out of order.
+
+{pstd}
 {bf:Group names.} ODK Central may name fields inside groups
 {it:group}{cmd:-}{it:field}.  These prefixes are removed automatically, so
 exports with or without "Remove group names" both work.
+
+{pstd}
+{bf:Edge cases.} Child CSVs with no rows are skipped.  Child rows whose
+parent is not in the data are dropped, and their number is shown.  Names
+that would clash, names longer than 32 characters, and data wider than
+{cmd:c(maxvar)} stop the command with an error message saying what to do.
 
 
 {marker examples}{...}

@@ -45,7 +45,11 @@ else {
 }
 
 * --- Clean up ---
-capture shell rmdir /s /q "`tmpplus'"
-* On Mac/Linux use: capture shell rm -rf "`tmpplus'"
+if c(os) == "Windows" {
+	capture shell rmdir /s /q "`tmpplus'"
+}
+else {
+	capture shell rm -rf "`tmpplus'"
+}
 
 log close install
