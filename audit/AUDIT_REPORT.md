@@ -31,7 +31,7 @@ The independent audit could not run Stata in batch mode, so all its findings wer
 | VS-011 | Checklist header said v1.3.0 | **Fixed** |
 | VS-012 | Affiliation TODO in email | **Valid.** Author to fill in |
 | (gaps) | Missing KEY / duplicate KEY / parent clash untested; T06–T08 only checked "non-zero" | **Fixed:** E26 tests codes 111, 459, 111, 459, 110; cert T06–T08 now require exactly 198 / 198 / 601 and T06–T08/T10 now stop the test file on failure |
-| Probes | P01–P07 | Promoted to E19–E25. P07 was broken (asserted before loading the output; wrote output into the repo root) and was fixed in E25 |
+| Probes | P01–P08 | P01–P07 promoted to E19–E25 (P07 was broken: it asserted before loading the output and wrote output into the repo root; fixed in E25). P08 was a static note about VS-001. The probe files were then removed from the repository |
 
 ## Test suite
 
