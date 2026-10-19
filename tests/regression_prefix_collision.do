@@ -2,7 +2,7 @@ clear all
 set more off
 capture log close
 
-local repo "D:/odkrepeatmerge"
+local repo "`c(pwd)'"
 local testdir "`repo'/tests/tmp_prefix_collision"
 
 capture mkdir "`repo'/tests"
@@ -34,7 +34,7 @@ input str20 key str10 parent_key str5 q1 str5 q10
 end
 export delimited using "`testdir'/testform-rep.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`testdir'")
+odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`testdir'") replace
 
 use "`testdir'/testform.dta", clear
 unab allvars : _all
