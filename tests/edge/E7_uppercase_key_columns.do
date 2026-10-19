@@ -30,7 +30,7 @@ file open `fh' using "`d'/f-r.csv", write replace text
 file write `fh' "a,PARENT_KEY,KEY" _n "a1,u1,u1/r[1]" _n "a2,u1,u1/r[2]" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 local want "key m1 a1 a2 m2"

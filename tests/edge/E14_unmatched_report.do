@@ -30,7 +30,7 @@ file open `fh' using "`d'/f-r.csv", write replace text
 file write `fh' "key,parent_key,a,extra" _n "u1/r[1],u1,a1,e1" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 assert r(n_unmatched) == 2
 local um `"`r(unmatched)'"'
 local ok1 : list posof "old_q" in um

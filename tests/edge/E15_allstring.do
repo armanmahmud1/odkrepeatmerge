@@ -28,7 +28,7 @@ file open `fh' using "`d'/f-r.csv", write replace text
 file write `fh' "key,parent_key,pid" _n "u1/r[1],u1,0101" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace allstring
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace) allstring
 use "`d'/f.dta", clear
 confirm string variable hhid pid1
 assert hhid == "007" & pid1 == "0101"

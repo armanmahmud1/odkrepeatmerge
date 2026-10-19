@@ -33,7 +33,7 @@ capture erase "`d'/f.dta"
 capture erase "`d'/out.dta"
 
 * 1. first run creates the default file without replace
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'")
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta")
 assert r(N) == 2
 assert r(k) == 4
 assert r(n_repeat) == 1
@@ -42,26 +42,26 @@ local fn `"`r(fn)'"'
 confirm file `"`fn'"'
 
 * 2. second run without replace must refuse
-capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'")
+capture odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta")
 if _rc != 602 {
 	display as error "expected r(602) when output exists without replace; got r(`=_rc')"
 	exit 9
 }
 
 * 3. saving() without extension adds .dta; then needs replace
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving("`d'/out")
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/out")
 confirm file "`d'/out.dta"
-capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving("`d'/out.dta")
+capture odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/out.dta")
 if _rc != 602 {
 	display as error "expected r(602) for existing saving() file; got r(`=_rc')"
 	exit 9
 }
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving("`d'/out.dta", replace)
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/out.dta", replace)
 assert `"`r(fn)'"' == "`d'/out.dta"
 
 * 4. data in memory untouched
 sysuse auto, clear
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 assert _N == 74
 confirm variable make
 

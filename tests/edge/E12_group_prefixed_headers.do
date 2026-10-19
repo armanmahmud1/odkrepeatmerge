@@ -43,7 +43,7 @@ file write `fh' "h1,5,uuid:a1,uuid:a1/hh[1]" _n
 file write `fh' "h2,6,uuid:a1,uuid:a1/hh[2]" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 local nu = r(n_unmatched)
 local um `"`r(unmatched)'"'
 

@@ -37,7 +37,7 @@ file open `fh' using "`d'/f-asset.csv", write replace text
 file write `fh' "key,parent_key,asset_q" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 confirm variable key q0 hh_q1 q9

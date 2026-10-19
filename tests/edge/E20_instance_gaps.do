@@ -38,7 +38,7 @@ file write `fh' "u2/r[2],u2,B2" _n
 file write `fh' "u2/r[4],u2,B4" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 sort m1

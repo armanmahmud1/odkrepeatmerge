@@ -41,7 +41,7 @@ file write `fh' "Bina,35,`u1',`u1'/hh[2]" _n
 file write `fh' "Chand,60,`u2',`u2'/hh[1]" _n
 file close `fh'
 
-odkrepeatmerge, formid("central") formtitle("Central Form.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/central.csv", xlsform("`d'/Central Form.xlsx") saving("`d'/central.dta", replace)
 
 use "`d'/central.dta", clear
 describe, short

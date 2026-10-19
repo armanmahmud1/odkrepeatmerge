@@ -1,11 +1,10 @@
 /*----------------------------------------------------------------------
    E18_using_separate_folders.do
-   New syntax (v1.4.0): odkrepeatmerge using main.csv, xlsform(path)
+   odkrepeatmerge using main.csv, xlsform(path)
    - data in raw/, XLSForm in instrument/, output in the current
      working directory (out/); nothing is written to raw/
    - using without .csv, relative paths, saving()
-   - conflicts: using + formid()/formloc(); neither using nor formid()
-   - older syntax with a full xlsform() path plus formloc()
+   - missing xlsform; missing CSV file
    Run from the repo root (or via tests/run_all_tests.do).
 ----------------------------------------------------------------------*/
 version 14
@@ -81,19 +80,11 @@ quietly cd "`d'"
 odkrepeatmerge using "raw/hh_survey", xlsform("instrument/HH Survey.xlsx") saving("out/wide.dta", replace)
 confirm file "`d'/out/wide.dta"
 
-* 4. conflicts and missing input
-capture odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") formid("hh_survey") replace
-assert _rc == 198
-capture odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") formloc("raw") replace
-assert _rc == 198
-capture odkrepeatmerge, xlsform("instrument/HH Survey.xlsx") replace
+* 4. missing input
+capture odkrepeatmerge using "raw/hh_survey.csv", saving("out/wide.dta", replace)
 assert _rc == 198
 capture odkrepeatmerge using "raw/nofile.csv", xlsform("instrument/HH Survey.xlsx") replace
 assert _rc == 601
-
-* 5. older syntax: full xlsform() path is not joined with formloc()
-odkrepeatmerge, formid("hh_survey") formloc("`d'/raw") xlsform("`d'/instrument/HH Survey.xlsx") saving("`d'/out/old.dta", replace)
-confirm file "`d'/out/old.dta"
 
 quietly cd "`repo'"
 display as result "E18 PASS: using syntax with separate data/instrument/output folders"

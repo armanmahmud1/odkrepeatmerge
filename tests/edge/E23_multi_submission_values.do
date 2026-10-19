@@ -45,7 +45,7 @@ file write `fh' "uuid:003/hh[1],uuid:003,Nadia,2" _n
 file write `fh' "uuid:003/hh[2],uuid:003,Jamal,7" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace)
 
 use "`d'/f.dta", clear
 sort village

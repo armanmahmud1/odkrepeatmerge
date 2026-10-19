@@ -39,7 +39,7 @@ file write `fh' "u1/hh[1]/person[2],u1/hh[1],P12" _n
 file write `fh' "u1/hh[2]/person[1],u1/hh[2],P21" _n
 file close `fh'
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") separator replace
+odkrepeatmerge using "`d'/f.csv", xlsform("`d'/f.xlsx") saving("`d'/f.dta", replace) separator
 
 use "`d'/f.dta", clear
 local want "key m1 hh_q_1 p_q_1_1 p_q_2_1 hh_q_2 p_q_1_2 p_q_2_2"
