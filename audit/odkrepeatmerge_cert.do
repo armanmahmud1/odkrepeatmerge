@@ -277,11 +277,13 @@ capture shell rmdir "audit/tmp_t05"
 display as input _n "=== T06: Missing formid ==="
 
 capture noisily odkrepeatmerge, formtitle("x.xlsx")
-if _rc != 0 {
-	display as result "T06 PASS: missing formid correctly rejected (rc=`=_rc')"
+local rc = _rc
+if `rc' == 198 {
+	display as result "T06 PASS: missing formid correctly rejected (rc=`rc')"
 }
 else {
-	display as error "T06 FAIL: command should have errored"
+	display as error "T06 FAIL: expected r(198), got r(`rc')"
+	exit 9
 }
 
 
@@ -291,11 +293,13 @@ else {
 display as input _n "=== T07: Missing formtitle ==="
 
 capture noisily odkrepeatmerge, formid("x") replace
-if _rc != 0 {
-	display as result "T07 PASS: missing formtitle correctly rejected (rc=`=_rc')"
+local rc = _rc
+if `rc' == 198 {
+	display as result "T07 PASS: missing formtitle correctly rejected (rc=`rc')"
 }
 else {
-	display as error "T07 FAIL: command should have errored"
+	display as error "T07 FAIL: expected r(198), got r(`rc')"
+	exit 9
 }
 
 
@@ -305,11 +309,13 @@ else {
 display as input _n "=== T08: Non-existent form file ==="
 
 capture noisily odkrepeatmerge, formid("noexist") formtitle("noexist.xlsx") replace
-if _rc != 0 {
-	display as result "T08 PASS: non-existent file correctly rejected (rc=`=_rc')"
+local rc = _rc
+if `rc' == 601 {
+	display as result "T08 PASS: non-existent file correctly rejected (rc=`rc')"
 }
 else {
-	display as error "T08 FAIL: command should have errored"
+	display as error "T08 FAIL: expected r(601), got r(`rc')"
+	exit 9
 }
 
 
@@ -398,6 +404,7 @@ if _rc != 0 {
 else {
 	display as error "T10 FAIL: orphan grp.dta left in working directory"
 	erase "grp.dta"
+	exit 9
 }
 
 capture erase "f.dta"

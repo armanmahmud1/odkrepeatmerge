@@ -6,11 +6,32 @@
 
 ---
 
-## Verdict: v1.4.0 passes 22 / 22 test files (Stata 17, 2026-10-18). Ready for SSC once the remaining TODOs below are done.
+## Verdict: v1.4.0 passes 30 / 30 test files (Stata 17, 2026-10-19), including E19–E26 added after the independent audit. Ready for SSC once the remaining TODOs below are done.
 
 v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 3 blockers and 7 should-fix items, all addressed in v1.3.0 below. The full suite (2 regressions, certification T01–T10, help-file examples, edge tests E1–E18) passes on v1.4.0.
 
 ---
+
+## Response to the independent audit (`audit/README_REPORT_FROM_VSCODE.md`, 2026-10-19)
+
+The independent audit could not run Stata in batch mode, so all its findings were static. Each was checked against the code:
+
+| ID | Finding | Response |
+|----|---------|----------|
+| VS-001 | `main` still has v1.0.0, so `net install` serves old code | **Valid.** Merge V1 into main before submission (author's step) |
+| VS-002 | `.claude/settings.local.json` tracked | **Valid.** `git rm --cached .claude/settings.local.json` (author's step) |
+| VS-003 | `confirm file` uses simple quotes (ado 76–77) | **Not valid.** Both lines already use compound quotes: `confirm file `"`form_name'"'` |
+| VS-004 | No 4+ level nesting test | **Fixed:** E19 (values + exact order) |
+| VS-005 | No instance-gap test | **Fixed:** E20 |
+| VS-006 | No out-of-order rows test | **Fixed:** E21 |
+| VS-007 | E6/E9 check order, not values | **Fixed:** E22 (sibling repeats, values + order); E23 adds multi-submission values |
+| VS-008 | `_orm_j` / `_orm_m` could clash with user fields | **Accepted, not changed.** Requires a form field named `_orm_j`/`_orm_m`; negligible risk |
+| VS-009 | LICENSE year 2025 | **No change.** 2025 is the year of first publication |
+| VS-010 | `install_test.do` Windows-only cleanup | **Fixed:** uses `c(os)` to pick `rmdir` or `rm -rf` |
+| VS-011 | Checklist header said v1.3.0 | **Fixed** |
+| VS-012 | Affiliation TODO in email | **Valid.** Author to fill in |
+| (gaps) | Missing KEY / duplicate KEY / parent clash untested; T06–T08 only checked "non-zero" | **Fixed:** E26 tests codes 111, 459, 111, 459, 110; cert T06–T08 now require exactly 198 / 198 / 601 and T06–T08/T10 now stop the test file on failure |
+| Probes | P01–P07 | Promoted to E19–E25. P07 was broken (asserted before loading the output; wrote output into the repo root) and was fixed in E25 |
 
 ## Test suite
 
@@ -27,6 +48,8 @@ v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 
 | `tests/edge/E15_allstring.do` | leading zeros kept |
 | `tests/edge/E16_xlsform_synonym.do` | `xlsform()` / `formtitle()` synonym and conflicts |
 | `tests/edge/E17_maxvar_guard.do` | clear r(900) before exceeding `c(maxvar)` |
+| `tests/edge/E19`–`E25` | from the independent audit (`audit/README_REPORT_FROM_VSCODE.md`): 4-level nesting, instance gaps, rows out of order, sibling repeats with values, multi-submission values, survey sheet not first, paths with spaces |
+| `tests/edge/E26_error_paths.do` | missing KEY (111), duplicate KEY (459), missing PARENT_KEY (111), KEY without [n] (459), name clash (110) and its `separator` fix |
 | `tests/edge/E18_using_separate_folders.do` | `using` syntax; data, XLSForm and output in different folders; nothing written to raw/; conflicts; older syntax with a full XLSForm path |
 
 Run everything with: `cd` to the repo root, then `do tests/run_all_tests.do` (log: `tests/run_all_tests.log`).
@@ -180,7 +203,7 @@ Arman Mahmud
 
 ---
 
-## Pre-Submission Checklist (v1.3.0)
+## Pre-Submission Checklist (v1.4.0)
 
 | # | Item | Status |
 |---|------|--------|
@@ -198,7 +221,7 @@ Arman Mahmud
 | 12 | Cross-platform paths | PASS (`/`) |
 | 13 | No SSC name collision | PASS |
 | 14 | `.pkg` / `stata.toc` valid for GitHub `net install` | PASS |
-| 15 | Full test suite passes on v1.4.0 | PASS (22/22, cert T01–T10, help examples) |
+| 15 | Full test suite passes on v1.4.0 | PASS (30/30, incl. cert T01–T10 with exact error codes) |
 | 16 | Tested on a real ODK Central export | TODO |
 | 17 | Affiliation filled in email | TODO |
 | 18 | README "testing phase" warning removed | PASS |

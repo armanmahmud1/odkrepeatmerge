@@ -1,3 +1,4 @@
 v 3
 d Arman Mahmud
+d odkrepeatmerge: Merge ODK repeat-group data into one wide dataset in questionnaire order
 p odkrepeatmerge
