@@ -1,5 +1,15 @@
-v 1.0.0, Arman Mahmud 25oct2025 
-d odkrepeatmerge: Integrate repeat group data from ODK, following the questionnaire's sequence.
-d distribution-date: 2025-10-25
+v 3
+d odkrepeatmerge: Merge ODK repeat-group data into one wide dataset in questionnaire order
+d
+d Combines the main and repeat-group CSV files exported from ODK Central
+d into one Stata dataset with one row per submission. Reads the XLSForm to
+d find the repeat groups and their nesting, reshapes each group wide, merges
+d it into its parent, and orders variables as in the questionnaire.
+d
+d Syntax: odkrepeatmerge using maincsv, xlsform(filename) [options]
+d
+d Requires: Stata 14
+d Author: Arman Mahmud
+d Distribution-Date: 20261018
 f odkrepeatmerge.ado
 f odkrepeatmerge.sthlp
