@@ -1,3 +1,0 @@
-v 3
-d Local testing repository for odkrepeatmerge
-p odkrepeatmerge
