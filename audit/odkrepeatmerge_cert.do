@@ -1,15 +1,15 @@
 /*----------------------------------------------------------------------
    audit/odkrepeatmerge_cert.do
-   Certification / regression tests for odkrepeatmerge v1.3.0
+   Certification / regression tests for odkrepeatmerge v1.4.0
 
    Covers:
      T01  Basic single-level repeat group
      T02  Nested repeat groups (2 levels)
      T03  Prefix-collision variable names (q1 vs q10)
-     T04  formloc omitted (uses cwd)
+     T04  Default output in cwd (no saving())
      T05  Data in memory preserved after command
-     T06  Error: missing formid option
-     T07  Error: missing xlsform()/formtitle() option
+     T06  Error: missing using clause
+     T07  Error: missing xlsform() option
      T08  Error: non-existent form file
      T09  Global macros not leaked after command
      T10  No orphan intermediate .dta files
@@ -56,7 +56,7 @@ input str20 key str10 parent_key str10 item_name byte item_qty
 end
 export delimited using "survey-items.csv", replace
 
-odkrepeatmerge, formid("survey") formtitle("form.xlsx") replace
+odkrepeatmerge using "survey.csv", xlsform("form.xlsx") replace
 
 confirm file "survey.dta"
 use "survey.dta", clear
@@ -117,7 +117,7 @@ input str30 key str20 parent_key str5 p_q1 str5 p_q2
 end
 export delimited using "testform-person.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx") replace
+odkrepeatmerge using "testform.csv", xlsform("testform.xlsx") replace
 
 use "testform.dta", clear
 confirm variable key submissiondate main1 main2
@@ -164,7 +164,7 @@ input str20 key str10 parent_key str5 q1 str5 q10
 end
 export delimited using "testform-rep.csv", replace
 
-odkrepeatmerge, formid("testform") formtitle("testform.xlsx") replace
+odkrepeatmerge using "testform.csv", xlsform("testform.xlsx") replace
 
 use "testform.dta", clear
 unab allvars : _all
@@ -181,9 +181,9 @@ capture shell rmdir "audit/tmp_t03"
 
 
 * ======================================================================
-* T04: formloc omitted (use cwd)
+* T04: Default output in cwd (no saving())
 * ======================================================================
-display as input _n "=== T04: formloc omitted ==="
+display as input _n "=== T04: Default output in cwd ==="
 
 capture mkdir "audit/tmp_t04"
 quietly cd "audit/tmp_t04"
@@ -208,9 +208,9 @@ input str20 key str10 parent_key str5 val
 end
 export delimited using "mysurvey-grp.csv", replace
 
-odkrepeatmerge, formid("mysurvey") formtitle("myform.xlsx") replace
+odkrepeatmerge using "mysurvey.csv", xlsform("myform.xlsx") replace
 confirm file "mysurvey.dta"
-display as result "T04 PASS: formloc omitted, cwd used"
+display as result "T04 PASS: default output in cwd"
 
 erase "mysurvey.dta"
 erase "myform.xlsx"
@@ -252,7 +252,7 @@ sysuse auto, clear
 datasignature set
 local orig_sig "`r(datasignature)'"
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
+odkrepeatmerge using "f.csv", xlsform("f.xlsx") replace
 
 capture noisily datasignature confirm
 if _rc == 0 {
@@ -272,30 +272,30 @@ capture shell rmdir "audit/tmp_t05"
 
 
 * ======================================================================
-* T06: Missing formid option
+* T06: Missing using clause
 * ======================================================================
-display as input _n "=== T06: Missing formid ==="
+display as input _n "=== T06: Missing using ==="
 
-capture noisily odkrepeatmerge, formtitle("x.xlsx")
+capture noisily odkrepeatmerge, xlsform("x.xlsx")
 local rc = _rc
-if `rc' == 198 {
-	display as result "T06 PASS: missing formid correctly rejected (rc=`rc')"
+if `rc' == 100 {
+	display as result "T06 PASS: missing using correctly rejected (rc=`rc')"
 }
 else {
-	display as error "T06 FAIL: expected r(198), got r(`rc')"
+	display as error "T06 FAIL: expected r(100), got r(`rc')"
 	exit 9
 }
 
 
 * ======================================================================
-* T07: Missing formtitle option
+* T07: Missing xlsform() option
 * ======================================================================
-display as input _n "=== T07: Missing formtitle ==="
+display as input _n "=== T07: Missing xlsform ==="
 
-capture noisily odkrepeatmerge, formid("x") replace
+capture noisily odkrepeatmerge using "x.csv"
 local rc = _rc
 if `rc' == 198 {
-	display as result "T07 PASS: missing formtitle correctly rejected (rc=`rc')"
+	display as result "T07 PASS: missing xlsform correctly rejected (rc=`rc')"
 }
 else {
 	display as error "T07 FAIL: expected r(198), got r(`rc')"
@@ -308,7 +308,7 @@ else {
 * ======================================================================
 display as input _n "=== T08: Non-existent form file ==="
 
-capture noisily odkrepeatmerge, formid("noexist") formtitle("noexist.xlsx") replace
+capture noisily odkrepeatmerge using "noexist.csv", xlsform("noexist.xlsx") replace
 local rc = _rc
 if `rc' == 601 {
 	display as result "T08 PASS: non-existent file correctly rejected (rc=`rc')"
@@ -349,7 +349,7 @@ export delimited using "f-grp.csv", replace
 
 capture macro drop form_id form_name
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
+odkrepeatmerge using "f.csv", xlsform("f.xlsx") replace
 
 if "$form_id" == "" & "$form_name" == "" {
 	display as result "T09 PASS: no global macros leaked"
@@ -395,7 +395,7 @@ input str20 key str10 parent_key str5 val
 end
 export delimited using "f-grp.csv", replace
 
-odkrepeatmerge, formid("f") formtitle("f.xlsx") replace
+odkrepeatmerge using "f.csv", xlsform("f.xlsx") replace
 
 capture confirm file "grp.dta"
 if _rc != 0 {

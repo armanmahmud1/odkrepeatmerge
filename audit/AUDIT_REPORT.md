@@ -8,7 +8,7 @@
 
 ## Verdict: v1.4.0 passes 30 / 30 test files (Stata 17, 2026-10-19), including E19–E26 added after the independent audit. Ready for SSC once the remaining TODOs below are done.
 
-v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 3 blockers and 7 should-fix items, all addressed in v1.3.0 below. The full suite (2 regressions, certification T01–T10, help-file examples, edge tests E1–E18) passes on v1.4.0.
+v1.2.0 passed 14/14 test files. A reviewer-style audit on 2026-10-18 then found 3 blockers and 7 should-fix items, all addressed in v1.3.0 below. The full suite (2 regressions, certification T01–T10, help-file examples, edge tests E1–E18) passes on v1.4.0. The deprecated `formid()`/`formloc()` syntax was removed; all tests and documentation now use the `using` syntax only.
 
 ---
 
@@ -60,11 +60,10 @@ Run everything with: `cd` to the repo root, then `do tests/run_all_tests.do` (lo
 
 | Change | Why | Test |
 |--------|-----|------|
-| New syntax `odkrepeatmerge using maincsv, xlsform(path)` | In real projects the XLSForm (instrument folder) and the data (raw folder) live in different places; `formid()` only served to build CSV file names | E18 |
+| New syntax `odkrepeatmerge using maincsv, xlsform(path)` | In real projects the XLSForm (instrument folder) and the data (raw folder) live in different places | E18 |
 | Child CSVs are looked for next to the main CSV (`stem-group.csv`) | Matches ODK Central's export | E18 |
 | Default output `stem.dta` in the current working directory | Raw data folder stays untouched; Stata convention | E18 |
-| Older `formid()`/`formloc()` syntax kept, with its old default output location; a full `xlsform()` path is no longer joined with `formloc()` | Existing scripts keep working | E1–E17, E18 |
-| `using` cannot be combined with `formid()`/`formloc()` (r(198)) | Avoid ambiguous input | E18 |
+| Deprecated `formid()`/`formloc()` syntax removed | Only one syntax to learn and maintain; all tests updated | T01–T10, E1–E18 |
 
 ## v1.3.0 changes (2026-10-18, from the SSC-readiness review)
 
@@ -221,8 +220,8 @@ Arman Mahmud
 | 12 | Cross-platform paths | PASS (`/`) |
 | 13 | No SSC name collision | PASS |
 | 14 | `.pkg` / `stata.toc` valid for GitHub `net install` | PASS |
-| 15 | Full test suite passes on v1.4.0 | PASS (30/30, incl. cert T01–T10 with exact error codes) |
+| 15 | Full test suite passes on v1.4.0 | PASS (30/30, incl. cert T01–T10 with exact error codes; tests updated after `formid`/`formloc` removal) |
 | 16 | Tested on a real ODK Central export | TODO |
 | 17 | Affiliation filled in email | TODO |
 | 18 | README "testing phase" warning removed | PASS |
-| 19 | V1 merged into `main` (what `net install` serves) | TODO |
+| 19 | V1 merged into `main` (what `net install` serves) | PASS |

@@ -31,10 +31,6 @@ if inlist(_rc, 197, 198) local bad = `bad' + 1
 capture noisily odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") allstring separator replace
 if inlist(_rc, 197, 198) local bad = `bad' + 1
 
-* Older syntax (documented under "Older syntax")
-capture noisily odkrepeatmerge, formid("hh_survey") xlsform("HH Survey.xlsx") formloc("D:/survey/raw")
-if inlist(_rc, 197, 198) local bad = `bad' + 1
-
 if `bad' {
 	display as error "FAIL: `bad' help-file example(s) have a syntax error"
 	log close examples
