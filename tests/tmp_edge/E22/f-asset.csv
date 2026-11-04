@@ -1,0 +1,4 @@
+key,parent_key,item
+u1/asset[1],u1,Radio
+u1/asset[2],u1,Phone
+u1/asset[3],u1,Bike

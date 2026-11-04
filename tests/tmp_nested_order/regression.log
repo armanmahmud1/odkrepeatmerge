@@ -1,0 +1,127 @@
+-----------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_n
+> ested_order/regression.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:14
+
+. 
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text" "submissiondate"
+  2. "text" "main1"
+  3. "begin_repeat" "hh"
+  4. "text" "hh_q1"
+  5. "begin_repeat" "person"
+  6. "text" "p_q1"
+  7. "text" "p_q2"
+  8. "end_repeat" "person_end"
+  9. "text" "hh_q2"
+ 10. "end_repeat" "hh_end"
+ 11. "text" "main2"
+ 12. end
+
+. export excel using "`testdir'/testform.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform.xlsx saved
+
+. 
+. clear
+
+. input str10 key str10 submissiondate str5 main1 str5 main2
+
+            key  submissi~e      main1      main2
+  1. "uuid1" "2024-01-01" "A" "Z"
+  2. end
+
+. export delimited using "`testdir'/testform.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform.csv saved
+
+. 
+. clear
+
+. input str20 key str10 parent_key str5 hh_q1 str5 hh_q2
+
+                      key  parent_key      hh_q1      hh_q2
+  1. "uuid1/hh[1]" "uuid1" "h1a" "h1b"
+  2. "uuid1/hh[2]" "uuid1" "h2a" "h2b"
+  3. end
+
+. export delimited using "`testdir'/testform-hh.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform-hh.csv saved
+
+. 
+. clear
+
+. input str30 key str20 parent_key str5 p_q1 str5 p_q2
+
+                                key            parent_key       p_q1       p_
+> q2
+  1. "uuid1/hh[1]/person[1]" "uuid1/hh[1]" "p11a" "p11b"
+  2. "uuid1/hh[1]/person[2]" "uuid1/hh[1]" "p12a" "p12b"
+  3. "uuid1/hh[2]/person[1]" "uuid1/hh[2]" "p21a" "p21b"
+  4. end
+
+. export delimited using "`testdir'/testform-person.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform-person.csv saved
+
+. 
+. odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`tes
+> tdir'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_o
+> rder/testform.dta (1 obs, 16 vars)
+
+. 
+. use "`testdir'/testform.dta", clear
+
+. unab allvars : _all
+
+. 
+. local expected ///
+>     "key submissiondate main1 " + ///
+>     "hh_q11 p_q11_1 p_q21_1 p_q12_1 p_q22_1 hh_q21 " + ///
+>     "hh_q12 p_q11_2 p_q21_2 p_q12_2 p_q22_2 hh_q22 main2"
+
+. 
+. assert "`allvars'" == "`expected'"
+
+. 
+. display "PASS: nested repeat variables follow questionnaire order"
+PASS: nested repeat variables follow questionnaire order
+
+. log close
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_n
+> ested_order/regression.log
+  log type:  text
+ closed on:  19 Oct 2026, 07:11:15
+-----------------------------------------------------------------------------

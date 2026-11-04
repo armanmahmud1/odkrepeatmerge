@@ -1,0 +1,4440 @@
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:14
+
+. 
+. * --- Make sure the REPO copy is what runs -------------------------------
+. discard
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. display as text "Stata version : " as result c(stata_version)
+Stata version : 17
+
+. display as text "Repo          : " as result `"`repo'"'
+Repo          : H:\My Drive\00_Workspace\Repositories\odkrepeatmerge
+
+. display as text "Loaded from   :"
+Loaded from   :
+
+. which odkrepeatmerge
+H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\odkrepeatmerge.ado
+*! version 1.4.0 18oct2026 Arman Mahmud
+
+. quietly findfile odkrepeatmerge.ado
+
+. local loaded = subinstr(lower(`"`r(fn)'"'), "\", "/", .)
+
+. local want   = subinstr(lower(`"`repo'/odkrepeatmerge.ado"'), "\", "/", .)
+
+. if `"`loaded'"' != `"`want'"' {
+.         display as error "WARNING: Stata resolves odkrepeatmerge to"
+.         display as error `"  `r(fn)'"'
+.         display as error "  which is NOT the repo copy. Results below may t
+> est the wrong version."
+. }
+
+. 
+. * --- Test list -----------------------------------------------------------
+> -
+. local tests `""tests/regression_nested_order.do" "tests/regression_prefix_c
+> ollision.do" "audit/odkrepeatmerge_cert.do" "audit/examples.do""'
+
+. local edge : dir "tests/edge" files "E*.do"
+
+. local edge : list sort edge
+
+. foreach f of local edge {
+  2.         local tests `"`tests' "tests/edge/`f'""'
+  3. }
+
+. 
+. * --- Run ----------------------------------------------------------------
+. local npass 0
+
+. local nfail 0
+
+. local results
+
+. foreach t of local tests {
+  2.         quietly cd "`repo'"
+  3.         discard
+  4.         display as text _n "{hline 70}" _n "RUNNING `t'" _n "{hline 70}"
+  5.         capture noisily do "`t'"
+  6.         local rc = _rc
+  7.         * some tests close all logs / cd away - restore runner state
+.         capture log close _all
+  8.         quietly cd "`repo'"
+  9.         log using "`runlog'", append text name(runner)
+ 10.         adopath ++ "`repo'"
+ 11.         if `rc' == 0 {
+ 12.                 local ++npass
+ 13.                 local results `"`results' "PASS        `t'""'
+ 14.         }
+ 15.         else {
+ 16.                 local ++nfail
+ 17.                 local results `"`results' "FAIL (r`rc')  `t'""'
+ 18.         }
+ 19. }
+
+----------------------------------------------------------------------
+RUNNING tests/regression_nested_order.do
+----------------------------------------------------------------------
+
+. clear all
+
+. set more off
+
+. capture log close
+
+. 
+. local repo "`c(pwd)'"
+
+. local testdir "`repo'/tests/tmp_nested_order"
+
+. 
+. capture mkdir "`repo'/tests"
+
+. capture mkdir "`testdir'"
+
+. log using "`testdir'/regression.log", replace text
+-----------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_n
+> ested_order/regression.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:14
+
+. 
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text" "submissiondate"
+  2. "text" "main1"
+  3. "begin_repeat" "hh"
+  4. "text" "hh_q1"
+  5. "begin_repeat" "person"
+  6. "text" "p_q1"
+  7. "text" "p_q2"
+  8. "end_repeat" "person_end"
+  9. "text" "hh_q2"
+ 10. "end_repeat" "hh_end"
+ 11. "text" "main2"
+ 12. end
+
+. export excel using "`testdir'/testform.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform.xlsx saved
+
+. 
+. clear
+
+. input str10 key str10 submissiondate str5 main1 str5 main2
+
+            key  submissi~e      main1      main2
+  1. "uuid1" "2024-01-01" "A" "Z"
+  2. end
+
+. export delimited using "`testdir'/testform.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform.csv saved
+
+. 
+. clear
+
+. input str20 key str10 parent_key str5 hh_q1 str5 hh_q2
+
+                      key  parent_key      hh_q1      hh_q2
+  1. "uuid1/hh[1]" "uuid1" "h1a" "h1b"
+  2. "uuid1/hh[2]" "uuid1" "h2a" "h2b"
+  3. end
+
+. export delimited using "`testdir'/testform-hh.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform-hh.csv saved
+
+. 
+. clear
+
+. input str30 key str20 parent_key str5 p_q1 str5 p_q2
+
+                                key            parent_key       p_q1       p_
+> q2
+  1. "uuid1/hh[1]/person[1]" "uuid1/hh[1]" "p11a" "p11b"
+  2. "uuid1/hh[1]/person[2]" "uuid1/hh[1]" "p12a" "p12b"
+  3. "uuid1/hh[2]/person[1]" "uuid1/hh[2]" "p21a" "p21b"
+  4. end
+
+. export delimited using "`testdir'/testform-person.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_or
+> der/testform-person.csv saved
+
+. 
+. odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`tes
+> tdir'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_nested_o
+> rder/testform.dta (1 obs, 16 vars)
+
+. 
+. use "`testdir'/testform.dta", clear
+
+. unab allvars : _all
+
+. 
+. local expected ///
+>     "key submissiondate main1 " + ///
+>     "hh_q11 p_q11_1 p_q21_1 p_q12_1 p_q22_1 hh_q21 " + ///
+>     "hh_q12 p_q11_2 p_q21_2 p_q12_2 p_q22_2 hh_q22 main2"
+
+. 
+. assert "`allvars'" == "`expected'"
+
+. 
+. display "PASS: nested repeat variables follow questionnaire order"
+PASS: nested repeat variables follow questionnaire order
+
+. log close
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_n
+> ested_order/regression.log
+  log type:  text
+ closed on:  19 Oct 2026, 07:11:15
+-----------------------------------------------------------------------------
+
+. exit 0
+
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:15
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/regression_prefix_collision.do
+----------------------------------------------------------------------
+
+. clear all
+
+. set more off
+
+. capture log close
+
+. 
+. local repo "`c(pwd)'"
+
+. local testdir "`repo'/tests/tmp_prefix_collision"
+
+. 
+. capture mkdir "`repo'/tests"
+
+. capture mkdir "`testdir'"
+
+. log using "`testdir'/regression.log", replace text
+-----------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_p
+> refix_collision/regression.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:15
+
+. 
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "begin_repeat" "rep"
+  2. "text" "q1"
+  3. "text" "q10"
+  4. "end_repeat" "rep_end"
+  5. "text" "after_rep"
+  6. end
+
+. export excel using "`testdir'/testform.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_prefix_co
+> llision/testform.xlsx saved
+
+. 
+. clear
+
+. input str10 key str5 after_rep
+
+            key  after_rep
+  1. "uuid1" "done"
+  2. end
+
+. export delimited using "`testdir'/testform.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_prefix_co
+> llision/testform.csv saved
+
+. 
+. clear
+
+. input str20 key str10 parent_key str5 q1 str5 q10
+
+                      key  parent_key         q1        q10
+  1. "uuid1/rep[1]" "uuid1" "a1" "b1"
+  2. "uuid1/rep[2]" "uuid1" "a2" "b2"
+  3. end
+
+. export delimited using "`testdir'/testform-rep.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_prefix_co
+> llision/testform-rep.csv saved
+
+. 
+. odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`tes
+> tdir'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_prefix_c
+> ollision/testform.dta (1 obs, 6 vars)
+
+. 
+. use "`testdir'/testform.dta", clear
+
+. unab allvars : _all
+
+. 
+. local expected "key q11 q101 q12 q102 after_rep"
+
+. assert "`allvars'" == "`expected'"
+
+. 
+. display "PASS: repeat stems with shared prefixes stay in questionnaire orde
+> r"
+PASS: repeat stems with shared prefixes stay in questionnaire order
+
+. log close
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_p
+> refix_collision/regression.log
+  log type:  text
+ closed on:  19 Oct 2026, 07:11:16
+-----------------------------------------------------------------------------
+
+. exit 0
+
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:16
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING audit/odkrepeatmerge_cert.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    audit/odkrepeatmerge_cert.do
+>    Certification / regression tests for odkrepeatmerge v1.3.0
+> 
+>    Covers:
+>      T01  Basic single-level repeat group
+>      T02  Nested repeat groups (2 levels)
+>      T03  Prefix-collision variable names (q1 vs q10)
+>      T04  formloc omitted (uses cwd)
+>      T05  Data in memory preserved after command
+>      T06  Error: missing formid option
+>      T07  Error: missing xlsform()/formtitle() option
+>      T08  Error: non-existent form file
+>      T09  Global macros not leaked after command
+>      T10  No orphan intermediate .dta files
+> ----------------------------------------------------------------------*/
+. 
+. capture log close _all
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:24
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING audit/examples.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    audit/examples.do
+>    The examples from odkrepeatmerge.sthlp (v1.4.0). Checks that
+>    each one is accepted by the parser.
+> 
+>    The example files do not exist, so each call should stop with
+>    r(601) "file not found". A syntax error (r(197)/r(198)) means the
+>    help-file example is wrong.
+> ----------------------------------------------------------------------*/
+. 
+. capture log close _all
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:24
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e10_separator_nested.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E10_separator_nested.do
+>    separator option with nested repeats: hh > person.
+>    Names: hh_q_<hh>, p_q_<person>_<hh>. Checks order and values.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E10"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "hh"
+  3. "text"         "hh_q"
+  4. "begin_repeat" "person"
+  5. "text"         "p_q"
+  6. "end_repeat"   ""
+  7. "end_repeat"   ""
+  8. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E10/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1" _n "u1,M" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-hh.csv", write replace text
+
+. file write `fh' "key,parent_key,hh_q" _n "u1/hh[1],u1,H1" _n "u1/hh[2],u1,H
+> 2" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-person.csv", write replace text
+
+. file write `fh' "key,parent_key,p_q" _n
+
+. file write `fh' "u1/hh[1]/person[1],u1/hh[1],P11" _n
+
+. file write `fh' "u1/hh[1]/person[2],u1/hh[1],P12" _n
+
+. file write `fh' "u1/hh[2]/person[1],u1/hh[2],P21" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") separator re
+> place
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E10
+> /f.dta (1 obs, 8 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key m1 hh_q_1 p_q_1_1 p_q_2_1 hh_q_2 p_q_1_2 p_q_2_2"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert hh_q_1 == "H1" & hh_q_2 == "H2"
+
+. assert p_q_1_1 == "P11" & p_q_2_1 == "P12" & p_q_1_2 == "P21" & p_q_2_2 == 
+> ""
+
+. display as result "E10 PASS: separator with nested repeats"
+E10 PASS: separator with nested repeats
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:26
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e11_prefix_ten_plus.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E11_prefix_ten_plus.do
+>    Questions q1 and q10 in a repeat with 10 instances (default naming).
+>    q1#10 -> q110 must be ordered as q1 instance 10, not q10 "instance 0".
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E11"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "begin_repeat" "r"
+  2. "text"         "q1"
+  3. "text"         "q10"
+  4. "end_repeat"   ""
+  5. "text"         "after"
+  6. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E11/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,after" _n "u1,done" _n
+
+. file close `fh'
+
+. clear
+
+. set obs 10
+Number of observations (_N) was 0, now 10.
+
+. generate key        = "u1/r[" + string(_n) + "]"
+
+. generate parent_key = "u1"
+
+. generate q1         = "a" + string(_n)
+
+. generate q10        = "b" + string(_n)
+
+. export delimited using "`d'/f-r.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E11/
+> f-r.csv saved
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E11
+> /f.dta (1 obs, 22 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key"
+
+. forvalues i = 1/10 {
+  2.         local want "`want' q1`i' q10`i'"
+  3. }
+
+. local want "`want' after"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert q110 == "a10" & q101 == "b1" & q1010 == "b10"
+
+. display as result "E11 PASS: q1/q10 prefix with 10+ instances"
+E11 PASS: q1/q10 prefix with 10+ instances
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:27
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e12_group_prefixed_headers.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E12_group_prefixed_headers.do
+>    ODK Central default export: fields inside groups are named group-field
+>    (main and repeat files). Prefixes must be removed so order is correct,
+>    Central system columns must not be reported as unmatched, and geopoint
+>    parts (gps-Latitude) must not steal the name of a real field "latitude".
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E12"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "begin_group"  "g1"
+  2. "text"         "m1"
+  3. "end_group"    ""
+  4. "geopoint"     "gps"
+  5. "text"         "latitude"
+  6. "begin_repeat" "hh"
+  7. "begin_group"  "hg"
+  8. "text"         "hh_q"
+  9. "end_group"    ""
+ 10. "integer"      "hh_n"
+ 11. "end_repeat"   ""
+ 12. "text"         "m2"
+ 13. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E12/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "SubmissionDate,g1-m1,gps-Latitude,gps-Longitude,latitude,m
+> 2,meta-instanceID,KEY,ReviewState" _n
+
+. file write `fh' "2026-01-01T00:00:00Z,x,23.7,90.4,L,y,uuid:a1,uuid:a1,appro
+> ved" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-hh.csv", write replace text
+
+. file write `fh' "hg-hh_q,hh_n,PARENT_KEY,KEY" _n
+
+. file write `fh' "h1,5,uuid:a1,uuid:a1/hh[1]" _n
+
+. file write `fh' "h2,6,uuid:a1,uuid:a1/hh[2]" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Note: 2 variable(s) not found in the XLSForm were placed at the end:
+  gpslatitude gpslongitude
+  If unexpected, check that the XLSForm version matches the data.
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E12
+> /f.dta (1 obs, 13 vars)
+
+. local nu = r(n_unmatched)
+
+. local um `"`r(unmatched)'"'
+
+. 
+. use "`d'/f.dta", clear
+
+. confirm variable m1 m2 latitude hh_q1 hh_q2 hh_n1 hh_n2
+
+. unab got : _all
+
+. local head
+
+. forvalues i = 1/8 {
+  2.         local w : word `i' of `got'
+  3.         local head `head' `w'
+  4. }
+
+. local want "key m1 latitude hh_q1 hh_n1 hh_q2 hh_n2 m2"
+
+. if "`head'" != "`want'" {
+.         display as error "Order mismatch"
+.         display as error "  want (first 8): `want'"
+.         display as error "  got           : `got'"
+.         exit 9
+. }
+
+. assert hh_q2 == "h2" & hh_n1 == 5 & m1 == "x" & latitude == "L"
+
+. * only the two geopoint parts are unmatched (system columns are not listed)
+. if `nu' != 2 {
+.         display as error `"expected 2 unmatched (geopoint parts), got `nu':
+>  `um'"'
+.         exit 9
+. }
+
+. display as result "E12 PASS: group-prefixed headers handled"
+E12 PASS: group-prefixed headers handled
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:28
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e13_saving_replace_results.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E13_saving_replace_results.do
+>    Output is never overwritten without replace; saving() works;
+>    r() results are returned.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E13"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r"
+  3. "text"         "a"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E13/
+> f.xlsx saved
+
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1" _n "u1,x" _n "u2,y" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+
+. file write `fh' "key,parent_key,a" _n "u1/r[1],u1,a1" _n "u1/r[2],u1,a2" _n
+
+. file close `fh'
+
+. 
+. capture erase "`d'/f.dta"
+
+. capture erase "`d'/out.dta"
+
+. 
+. * 1. first run creates the default file without replace
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'")
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E13
+> /f.dta (2 obs, 4 vars)
+
+. assert r(N) == 2
+
+. assert r(k) == 4
+
+. assert r(n_repeat) == 1
+
+. assert r(n_unmatched) == 0
+
+. local fn `"`r(fn)'"'
+
+. confirm file `"`fn'"'
+
+. 
+. * 2. second run without replace must refuse
+. capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'")
+
+. if _rc != 602 {
+.         display as error "expected r(602) when output exists without replac
+> e; got r(`=_rc')"
+.         exit 9
+. }
+
+. 
+. * 3. saving() without extension adds .dta; then needs replace
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving("`d'/ou
+> t")
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E13
+> /out.dta (2 obs, 4 vars)
+
+. confirm file "`d'/out.dta"
+
+. capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving
+> ("`d'/out.dta")
+
+. if _rc != 602 {
+.         display as error "expected r(602) for existing saving() file; got r
+> (`=_rc')"
+.         exit 9
+. }
+
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") saving("`d'/ou
+> t.dta", replace)
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E13
+> /out.dta (2 obs, 4 vars)
+
+. assert `"`r(fn)'"' == "`d'/out.dta"
+
+. 
+. * 4. data in memory untouched
+. sysuse auto, clear
+(1978 automobile data)
+
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E13
+> /f.dta (2 obs, 4 vars)
+
+. assert _N == 74
+
+. confirm variable make
+
+. 
+. display as result "E13 PASS: replace/saving()/stored results"
+E13 PASS: replace/saving()/stored results
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:30
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e14_unmatched_report.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E14_unmatched_report.do
+>    A CSV column that is not in the XLSForm goes to the end and is
+>    reported in r(unmatched).
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E14"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r"
+  3. "text"         "a"
+  4. "end_repeat"   ""
+  5. "text"         "m2"
+  6. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E14/
+> f.xlsx saved
+
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,old_q,m1,m2" _n "u1,z,x,y" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+
+. file write `fh' "key,parent_key,a,extra" _n "u1/r[1],u1,a1,e1" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Note: 2 variable(s) not found in the XLSForm were placed at the end:
+  old_q extra1
+  If unexpected, check that the XLSForm version matches the data.
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E14
+> /f.dta (1 obs, 6 vars)
+
+. assert r(n_unmatched) == 2
+
+. local um `"`r(unmatched)'"'
+
+. local ok1 : list posof "old_q" in um
+
+. local ok2 : list posof "extra1" in um
+
+. assert `ok1' & `ok2'
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key m1 a1 m2 old_q extra1"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. display as result "E14 PASS: unmatched variables reported and placed last"
+E14 PASS: unmatched variables reported and placed last
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:31
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e15_allstring.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E15_allstring.do
+>    Codes with leading zeros survive with allstring.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E15"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "hhid"
+  2. "begin_repeat" "r"
+  3. "text"         "pid"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E15/
+> f.xlsx saved
+
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,hhid" _n "u1,007" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+
+. file write `fh' "key,parent_key,pid" _n "u1/r[1],u1,0101" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace allstr
+> ing
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E15
+> /f.dta (1 obs, 3 vars)
+
+. use "`d'/f.dta", clear
+
+. confirm string variable hhid pid1
+
+. assert hhid == "007" & pid1 == "0101"
+
+. display as result "E15 PASS: allstring keeps leading zeros"
+E15 PASS: allstring keeps leading zeros
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:32
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e16_xlsform_synonym.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E16_xlsform_synonym.do
+>    xlsform() and formtitle() are synonyms; conflicting or missing
+>    values are rejected.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E16"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text" "q1"
+  2. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E16/
+> f.xlsx saved
+
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,q1" _n "u1,a" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 0 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E16
+> /f.dta (1 obs, 2 vars)
+
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 0 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E16
+> /f.dta (1 obs, 2 vars)
+
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formtitle("f.xlsx") formloc("
+> `d'") replace
+
+Reading the XLSForm...
+Found 0 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E16
+> /f.dta (1 obs, 2 vars)
+
+. 
+. capture odkrepeatmerge, formid("f") xlsform("f.xlsx") formtitle("g.xlsx") f
+> ormloc("`d'") replace
+
+. assert _rc == 198
+
+. capture odkrepeatmerge, formid("f") formloc("`d'") replace
+
+. assert _rc == 198
+
+. display as result "E16 PASS: xlsform()/formtitle() synonym"
+E16 PASS: xlsform()/formtitle() synonym
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:33
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e17_maxvar_guard.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E17_maxvar_guard.do
+>    A repeat whose wide form exceeds c(maxvar) must stop with r(900)
+>    and a clear message, before reshape.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E17"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. local nq 50
+
+. local ni = ceil(c(maxvar) / `nq') + 1
+
+. 
+. clear
+
+. set obs `=`nq' + 2'
+Number of observations (_N) was 0, now 52.
+
+. generate str20 type = "text"
+
+. generate str20 name = "q" + string(_n - 1)
+
+. replace type = "begin_repeat" in 1
+(1 real change made)
+
+. replace name = "r" in 1
+(1 real change made)
+
+. replace type = "end_repeat" in `=`nq' + 2'
+(1 real change made)
+
+. replace name = "" in `=`nq' + 2'
+(1 real change made)
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E17/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key" _n "u1" _n
+
+. file close `fh'
+
+. 
+. clear
+
+. set obs `ni'
+Number of observations (_N) was 0, now 101.
+
+. generate key        = "u1/r[" + string(_n) + "]"
+
+. generate parent_key = "u1"
+
+. forvalues i = 1/`nq' {
+  2.         generate byte q`i' = 1
+  3. }
+
+. export delimited using "`d'/f-r.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E17/
+> f-r.csv saved
+
+. 
+. capture noisily odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'"
+> ) replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Repeat group r needs 5051 variables in wide form; the limit is 5000.
+Raise it with set maxvar (Stata SE/MP) or drop unneeded questions.
+
+. if _rc != 900 {
+.         display as error "expected r(900) from the maxvar guard; got r(`=_r
+> c')"
+.         exit 9
+. }
+
+. display as result "E17 PASS: variable-limit guard"
+E17 PASS: variable-limit guard
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:34
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e18_using_separate_folders.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E18_using_separate_folders.do
+>    New syntax (v1.4.0): odkrepeatmerge using main.csv, xlsform(path)
+>    - data in raw/, XLSForm in instrument/, output in the current
+>      working directory (out/); nothing is written to raw/
+>    - using without .csv, relative paths, saving()
+>    - conflicts: using + formid()/formloc(); neither using nor formid()
+>    - older syntax with a full xlsform() path plus formloc()
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E18"
+
+. capture mkdir "`d'"
+
+. capture mkdir "`d'/raw"
+
+. capture mkdir "`d'/instrument"
+
+. capture mkdir "`d'/out"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "member"
+  3. "text"         "name"
+  4. "begin_repeat" "illness"
+  5. "text"         "ill_type"
+  6. "end_repeat"   ""
+  7. "end_repeat"   ""
+  8. "text"         "m2"
+  9. end
+
+. export excel using "`d'/instrument/HH Survey.xlsx", firstrow(variables) she
+> et("survey") replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E18/
+> instrument/HH Survey.xlsx saved
+
+. 
+. file open `fh' using "`d'/raw/hh_survey.csv", write replace text
+
+. file write `fh' "m1,m2,KEY" _n "x,y,u1" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/raw/hh_survey-member.csv", write replace text
+
+. file write `fh' "name,PARENT_KEY,KEY" _n "A,u1,u1/member[1]" _n "B,u1,u1/me
+> mber[2]" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/raw/hh_survey-illness.csv", write replace text
+
+. file write `fh' "ill_type,PARENT_KEY,KEY" _n
+
+. file write `fh' "flu,u1/member[1],u1/member[1]/illness[1]" _n
+
+. file write `fh' "fever,u1/member[1],u1/member[1]/illness[2]" _n
+
+. file close `fh'
+
+. 
+. capture erase "`d'/out/hh_survey.dta"
+
+. capture erase "`d'/raw/hh_survey.dta"
+
+. 
+. * 1. absolute paths; output goes to the current working directory
+. quietly cd "`d'/out"
+
+. odkrepeatmerge using "`d'/raw/hh_survey.csv", xlsform("`d'/instrument/HH Su
+> rvey.xlsx")
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved hh_survey.dta (1 obs, 9 vars)
+
+. assert `"`r(fn)'"' == "hh_survey.dta"
+
+. assert r(N) == 1
+
+. confirm file "`d'/out/hh_survey.dta"
+
+. capture confirm file "`d'/raw/hh_survey.dta"
+
+. if !_rc {
+.         display as error "output was written to the raw data folder"
+.         exit 9
+. }
+
+. use "`d'/out/hh_survey.dta", clear
+
+. local want "key m1 name1 ill_type1_1 ill_type2_1 name2 ill_type1_2 ill_type
+> 2_2 m2"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert name1 == "A" & name2 == "B" & ill_type2_1 == "fever" & ill_type1_2 =
+> = ""
+
+. 
+. * 2. run again without replace must refuse; with replace works
+. capture odkrepeatmerge using "`d'/raw/hh_survey.csv", xlsform("`d'/instrume
+> nt/HH Survey.xlsx")
+
+. assert _rc == 602
+
+. odkrepeatmerge using "`d'/raw/hh_survey.csv", xlsform("`d'/instrument/HH Su
+> rvey.xlsx") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved hh_survey.dta (1 obs, 9 vars)
+
+. 
+. * 3. relative paths, no .csv extension, saving()
+. quietly cd "`d'"
+
+. odkrepeatmerge using "raw/hh_survey", xlsform("instrument/HH Survey.xlsx") 
+> saving("out/wide.dta", replace)
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved out/wide.dta (1 obs, 9 vars)
+
+. confirm file "`d'/out/wide.dta"
+
+. 
+. * 4. conflicts and missing input
+. capture odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Su
+> rvey.xlsx") formid("hh_survey") replace
+
+. assert _rc == 198
+
+. capture odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Su
+> rvey.xlsx") formloc("raw") replace
+
+. assert _rc == 198
+
+. capture odkrepeatmerge, xlsform("instrument/HH Survey.xlsx") replace
+
+. assert _rc == 198
+
+. capture odkrepeatmerge using "raw/nofile.csv", xlsform("instrument/HH Surve
+> y.xlsx") replace
+
+. assert _rc == 601
+
+. 
+. * 5. older syntax: full xlsform() path is not joined with formloc()
+. odkrepeatmerge, formid("hh_survey") formloc("`d'/raw") xlsform("`d'/instrum
+> ent/HH Survey.xlsx") saving("`d'/out/old.dta", replace)
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E18
+> /out/old.dta (1 obs, 9 vars)
+
+. confirm file "`d'/out/old.dta"
+
+. 
+. quietly cd "`repo'"
+
+. display as result "E18 PASS: using syntax with separate data/instrument/out
+> put folders"
+E18 PASS: using syntax with separate data/instrument/output folders
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:37
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e19_four_level_nesting.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E19_four_level_nesting.do
+>    Tests 4-level nesting (a > b > c > d). The existing test suite only
+>    goes to 3 levels. Verifies variable names, order, and values.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P01_four_level_nesting.do.
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E19"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "a"
+  3. "text"         "aq"
+  4. "begin_repeat" "b"
+  5. "text"         "bq"
+  6. "begin_repeat" "c"
+  7. "text"         "cq"
+  8. "begin_repeat" "d"
+  9. "text"         "dq"
+ 10. "end_repeat"   ""
+ 11. "end_repeat"   ""
+ 12. "end_repeat"   ""
+ 13. "end_repeat"   ""
+ 14. "text"         "m2"
+ 15. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/f.csv
+    not found)
+
+. file write `fh' "key,m1,m2" _n "u1,M1,M2" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-a.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/f-a.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,aq" _n "u1/a[1],u1,A1" _n "u1/a[2],u1,A2" _
+> n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-b.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/f-b.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,bq" _n
+
+. file write `fh' "u1/a[1]/b[1],u1/a[1],B11" _n
+
+. file write `fh' "u1/a[2]/b[1],u1/a[2],B21" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-c.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/f-c.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,cq" _n
+
+. file write `fh' "u1/a[1]/b[1]/c[1],u1/a[1]/b[1],C111" _n
+
+. file write `fh' "u1/a[2]/b[1]/c[1],u1/a[2]/b[1],C211" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-d.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19/f-d.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,dq" _n
+
+. file write `fh' "u1/a[1]/b[1]/c[1]/d[1],u1/a[1]/b[1]/c[1],D1111" _n
+
+. file write `fh' "u1/a[1]/b[1]/c[1]/d[2],u1/a[1]/b[1]/c[1],D2111" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 4 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E19
+> /f.dta (1 obs, 13 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. * Verify values
+. assert aq1 == "A1" & aq2 == "A2"
+
+. assert bq1_1 == "B11" & bq1_2 == "B21"
+
+. assert cq1_1_1 == "C111" & cq1_1_2 == "C211"
+
+. assert dq1_1_1_1 == "D1111" & dq2_1_1_1 == "D2111"
+
+. * Verify order: m1 before aq1 before bq before cq before dq before m2
+. unab got : _all
+
+. local pm1 : list posof "m1" in got
+
+. local paq : list posof "aq1" in got
+
+. local pbq : list posof "bq1_1" in got
+
+. local pcq : list posof "cq1_1_1" in got
+
+. local pdq : list posof "dq1_1_1_1" in got
+
+. local pm2 : list posof "m2" in got
+
+. assert `pm1' < `paq' & `paq' < `pbq' & `pbq' < `pcq' & `pcq' < `pdq' & `pdq
+> ' < `pm2'
+
+. * exact order: instances kept together, innermost numbers first
+. local want "key m1 aq1 bq1_1 cq1_1_1 dq1_1_1_1 dq2_1_1_1 aq2 bq1_2 cq1_1_2 
+> dq1_1_1_2 dq2_1_1_2 m2"
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert dq1_1_1_2 == "" & dq2_1_1_2 == ""
+
+. display as result "E19 PASS: 4-level nesting, values and order correct"
+E19 PASS: 4-level nesting, values and order correct
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:38
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e1_odk_central_realistic.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E1_odk_central_realistic.do
+>    Realistic ODK Central export: uuid: keys, upper-case KEY/PARENT_KEY,
+>    meta-instanceID + SubmissionDate columns, blank end_repeat name,
+>    form filename with a space, unequal repeat counts per submission.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E1"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "start"        "starttime"
+  2. "text"         "resp_name"
+  3. "begin_repeat" "hh"
+  4. "text"         "hh_name"
+  5. "integer"      "hh_age"
+  6. "end_repeat"   ""
+  7. "text"         "comment"
+  8. end
+
+. export excel using "`d'/Central Form.xlsx", firstrow(variables) sheet("surv
+> ey") replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E1/C
+> entral Form.xlsx saved
+
+. 
+. local u1 "uuid:3f2a9c1e-0b7d-4c55-9e61-1a2b3c4d5e01"
+
+. local u2 "uuid:3f2a9c1e-0b7d-4c55-9e61-1a2b3c4d5e02"
+
+. file open `fh' using "`d'/central.csv", write replace text
+
+. file write `fh' "SubmissionDate,starttime,resp_name,comment,meta-instanceID
+> ,KEY" _n
+
+. file write `fh' "2026-01-05T10:00:00.000Z,2026-01-05T09:50:00.000+06:00,Ari
+> f,ok,`u1',`u1'" _n
+
+. file write `fh' "2026-01-06T11:00:00.000Z,2026-01-06T10:40:00.000+06:00,Cha
+> nd,fine,`u2',`u2'" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/central-hh.csv", write replace text
+
+. file write `fh' "hh_name,hh_age,PARENT_KEY,KEY" _n
+
+. file write `fh' "Arif,40,`u1',`u1'/hh[1]" _n
+
+. file write `fh' "Bina,35,`u1',`u1'/hh[2]" _n
+
+. file write `fh' "Chand,60,`u2',`u2'/hh[1]" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("central") formtitle("Central Form.xlsx") formloc("`
+> d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E1/
+> central.dta (2 obs, 10 vars)
+
+. 
+. use "`d'/central.dta", clear
+
+. describe, short
+
+Contains data from H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests
+> /tmp_edge/E1/central.dta
+ Observations:             2                  
+    Variables:            10                  19 Oct 2026 07:11
+Sorted by: key
+
+. confirm variable key resp_name comment hh_name1 hh_name2 hh_age1 hh_age2
+
+. assert _N == 2
+
+. sort resp_name
+
+. assert hh_name1[1] == "Arif"  & hh_name2[1] == "Bina" & hh_age2[1] == 35
+
+. assert hh_name1[2] == "Chand" & hh_name2[2] == ""     & missing(hh_age2[2])
+
+. 
+. unab got : _all
+
+. foreach pair in "resp_name hh_name1" "hh_name1 hh_age1" "hh_age1 hh_name2" 
+> "hh_name2 comment" {
+  2.         local a : word 1 of `pair'
+  3.         local b : word 2 of `pair'
+  4.         local pa : list posof "`a'" in got
+  5.         local pb : list posof "`b'" in got
+  6.         if !(`pa' < `pb') {
+  7.                 display as error "`a' should come before `b'.  Order: `g
+> ot'"
+  8.                 exit 9
+  9.         }
+ 10. }
+
+. display as result "E1 PASS: realistic ODK Central export"
+E1 PASS: realistic ODK Central export
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:39
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e20_instance_gaps.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E20_instance_gaps.do
+>    Tests gaps in instance numbers (e.g., instances [1], [3], [5] from
+>    deleted repeats). Verifies that variables are named correctly and
+>    that values land in the right columns.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P02_instance_gaps.do.
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E20"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r"
+  3. "text"         "q"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E20/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E20/f.csv
+    not found)
+
+. file write `fh' "key,m1" _n "u1,x" _n "u2,y" _n
+
+. file close `fh'
+
+. * Gaps: submission u1 has instances [1],[3],[5]; u2 has [2],[4]
+. file open `fh' using "`d'/f-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E20/f-r.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,q" _n
+
+. file write `fh' "u1/r[1],u1,A1" _n
+
+. file write `fh' "u1/r[3],u1,A3" _n
+
+. file write `fh' "u1/r[5],u1,A5" _n
+
+. file write `fh' "u2/r[2],u2,B2" _n
+
+. file write `fh' "u2/r[4],u2,B4" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E20
+> /f.dta (2 obs, 7 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. sort m1
+
+. * u1 (m1="x") should have q1=A1, q2=., q3=A3, q4=., q5=A5
+. * u2 (m1="y") should have q1=., q2=B2, q3=., q4=B4, q5=.
+. assert q1[1] == "A1" & q3[1] == "A3" & q5[1] == "A5"
+
+. assert q2[2] == "B2" & q4[2] == "B4"
+
+. * Missing values for missing instances
+. assert q2[1] == "" & q4[1] == ""
+
+. assert q1[2] == "" & q3[2] == "" & q5[2] == ""
+
+. 
+. display as result "E20 PASS: instance gaps handled correctly"
+E20 PASS: instance gaps handled correctly
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:40
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e21_rows_out_of_order.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E21_rows_out_of_order.do
+>    Child CSV rows arrive in non-sequential order (e.g., instance [3]
+>    before [1]). Verifies that the instance number from KEY, not row
+>    order, determines the column assignment.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P03_rows_out_of_order.do.
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E21"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r"
+  3. "text"         "q"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E21/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E21/f.csv
+    not found)
+
+. file write `fh' "key,m1" _n "u1,x" _n
+
+. file close `fh'
+
+. * Rows deliberately out of order: [3] first, then [1], then [2]
+. file open `fh' using "`d'/f-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E21/f-r.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,q" _n
+
+. file write `fh' "u1/r[3],u1,THIRD" _n
+
+. file write `fh' "u1/r[1],u1,FIRST" _n
+
+. file write `fh' "u1/r[2],u1,SECOND" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E21
+> /f.dta (1 obs, 5 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. * Instance numbers from KEY, not row order
+. assert q1 == "FIRST"
+
+. assert q2 == "SECOND"
+
+. assert q3 == "THIRD"
+
+. 
+. display as result "E21 PASS: row order does not affect column assignment"
+E21 PASS: row order does not affect column assignment
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:41
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e22_sibling_repeats_values.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E22_sibling_repeats_values.do
+>    Two sibling repeats at the same level, verifying data values (not
+>    just variable order). Tests E6 and E9 verify order but not values.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P04_sibling_repeats_values.do.
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E22"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "roster"
+  3. "text"         "name"
+  4. "end_repeat"   ""
+  5. "text"         "m2"
+  6. "begin_repeat" "asset"
+  7. "text"         "item"
+  8. "end_repeat"   ""
+  9. "text"         "m3"
+ 10. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E22/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E22/f.csv
+    not found)
+
+. file write `fh' "key,m1,m2,m3" _n "u1,before,between,after" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-roster.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E22/f-ros
+    > ter.csv not found)
+
+. file write `fh' "key,parent_key,name" _n
+
+. file write `fh' "u1/roster[1],u1,Alice" _n "u1/roster[2],u1,Bob" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-asset.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E22/f-ass
+    > et.csv not found)
+
+. file write `fh' "key,parent_key,item" _n
+
+. file write `fh' "u1/asset[1],u1,Radio" _n "u1/asset[2],u1,Phone" _n "u1/ass
+> et[3],u1,Bike" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E22
+> /f.dta (1 obs, 9 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. * Check values
+. assert m1 == "before" & m2 == "between" & m3 == "after"
+
+. assert name1 == "Alice" & name2 == "Bob"
+
+. assert item1 == "Radio" & item2 == "Phone" & item3 == "Bike"
+
+. * Check order
+. local want "key m1 name1 name2 m2 item1 item2 item3 m3"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. 
+. display as result "E22 PASS: sibling repeats with correct values and order"
+E22 PASS: sibling repeats with correct values and order
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:42
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e23_multi_submission_values.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E23_multi_submission_values.do
+>    Multiple submissions with varying repeat counts. Comprehensive
+>    value checking to verify no row/value misattribution.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P05_multi_submission_values.do
+> .
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E23"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "village"
+  2. "begin_repeat" "hh"
+  3. "text"         "head"
+  4. "integer"      "size"
+  5. "end_repeat"   ""
+  6. "text"         "enum"
+  7. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E23/
+> f.xlsx saved
+
+. 
+. * 3 submissions with different repeat counts
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E23/f.csv
+    not found)
+
+. file write `fh' "key,village,enum" _n
+
+. file write `fh' "uuid:001,Dhaka,E1" _n
+
+. file write `fh' "uuid:002,Comilla,E2" _n
+
+. file write `fh' "uuid:003,Sylhet,E3" _n
+
+. file close `fh'
+
+. 
+. * uuid:001 has 3 HH members, uuid:002 has 1, uuid:003 has 2
+. file open `fh' using "`d'/f-hh.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E23/f-hh.
+    > csv not found)
+
+. file write `fh' "KEY,PARENT_KEY,head,size" _n
+
+. file write `fh' "uuid:001/hh[1],uuid:001,Ali,5" _n
+
+. file write `fh' "uuid:001/hh[2],uuid:001,Fatima,3" _n
+
+. file write `fh' "uuid:001/hh[3],uuid:001,Karim,4" _n
+
+. file write `fh' "uuid:002/hh[1],uuid:002,Rahim,6" _n
+
+. file write `fh' "uuid:003/hh[1],uuid:003,Nadia,2" _n
+
+. file write `fh' "uuid:003/hh[2],uuid:003,Jamal,7" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E23
+> /f.dta (3 obs, 9 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. sort village
+
+. 
+. * Comilla (uuid:002): 1 HH member
+. assert village[1] == "Comilla" & enum[1] == "E2"
+
+. assert head1[1] == "Rahim" & size1[1] == 6
+
+. assert head2[1] == "" & missing(size2[1])
+
+. assert head3[1] == "" & missing(size3[1])
+
+. 
+. * Dhaka (uuid:001): 3 HH members
+. assert village[2] == "Dhaka" & enum[2] == "E1"
+
+. assert head1[2] == "Ali" & size1[2] == 5
+
+. assert head2[2] == "Fatima" & size2[2] == 3
+
+. assert head3[2] == "Karim" & size3[2] == 4
+
+. 
+. * Sylhet (uuid:003): 2 HH members
+. assert village[3] == "Sylhet" & enum[3] == "E3"
+
+. assert head1[3] == "Nadia" & size1[3] == 2
+
+. assert head2[3] == "Jamal" & size2[3] == 7
+
+. assert head3[3] == "" & missing(size3[3])
+
+. 
+. display as result "E23 PASS: multi-submission values correctly attributed"
+E23 PASS: multi-submission values correctly attributed
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:44
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e24_survey_not_first_sheet.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E24_survey_not_first_sheet.do
+>    XLSForm where the "survey" sheet is not the first sheet. The code
+>    tries sheet("survey") first and falls back to the first sheet.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P06_survey_not_first_sheet.do.
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. local d "`repo'/tests/tmp_edge/E24"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. * Create an Excel file with "choices" as sheet 1 and "survey" as sheet 2
+. clear
+
+. input str20 list_name str20 name str20 label
+
+                list_name                  name                 label
+  1. "yn" "1" "Yes"
+  2. "yn" "0" "No"
+  3. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) sheet("choices") repla
+> ce
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E24/
+> f.xlsx saved
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "q1"
+  2. "begin_repeat" "r"
+  3. "text"         "q2"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) sheet("survey") sheetm
+> odify
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E24/
+> f.xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E24/f.csv
+    not found)
+
+. file write `fh' "key,q1" _n "u1,A" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E24/f-r.c
+    > sv not found)
+
+. file write `fh' "key,parent_key,q2" _n "u1/r[1],u1,B" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") xlsform("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E24
+> /f.dta (1 obs, 3 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. assert q1 == "A" & q21 == "B"
+
+. display as result "E24 PASS: survey sheet not first - handled correctly"
+E24 PASS: survey sheet not first - handled correctly
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:45
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e25_paths_with_spaces.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E25_paths_with_spaces.do
+>    using syntax with spaces in the folder, the main CSV name and the
+>    XLSForm name. Child file "main data-r.csv" must be found.
+>    Run from the repo root (or via tests/run_all_tests.do).
+>    Promoted from the independent audit probe P07_confirm_file_quoting.do
+>    (fixed: the probe asserted before opening the output, and wrote the
+>    output into the repo root).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E25 folder with spaces"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "q1"
+  2. "begin_repeat" "r"
+  3. "text"         "q2"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/My Form.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E25 
+> folder with spaces/My Form.xlsx saved
+
+. 
+. file open `fh' using "`d'/main data.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E25
+    folder with spaces/main data.csv not found)
+
+. file write `fh' "key,q1" _n "u1,hello" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/main data-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E25
+    folder with spaces/main data-r.csv not found)
+
+. file write `fh' "key,parent_key,q2" _n "u1/r[1],u1,world" _n
+
+. file close `fh'
+
+. 
+. * run from inside the folder so the default output (main data.dta) lands th
+> ere
+. quietly cd "`d'"
+
+. odkrepeatmerge using "`d'/main data.csv", xlsform("`d'/My Form.xlsx") repla
+> ce
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved main data.dta (1 obs, 3 vars)
+
+. assert `"`r(fn)'"' == "main data.dta"
+
+. use "`d'/main data.dta", clear
+
+. assert q1 == "hello" & q21 == "world"
+
+. quietly cd "`repo'"
+
+. display as result "E25 PASS: paths with spaces handled correctly"
+E25 PASS: paths with spaces handled correctly
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:45
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e26_error_paths.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E26_error_paths.do
+>    Error paths that had no test (gap noted by the independent audit):
+>      A. main CSV without KEY             -> r(111)
+>      B. duplicate KEY in main CSV        -> r(459)
+>      C. repeat CSV without PARENT_KEY    -> r(111)
+>      D. repeat KEY without trailing [n]  -> r(459)
+>      E. repeat variable clashes with a main variable (q a1 vs repeat
+>         question a, instance 1)          -> r(110); works with separator
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E26"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. * form 1: no repeats
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text" "q1"
+  2. end
+
+. export excel using "`d'/form1.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/
+> form1.xlsx saved
+
+. 
+. * form 2: one repeat r with question a
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "q1"
+  2. "begin_repeat" "r"
+  3. "text"         "a"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/form2.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/
+> form2.xlsx saved
+
+. 
+. * form 3: main question a1 + repeat r with question a
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "a1"
+  2. "begin_repeat" "r"
+  3. "text"         "a"
+  4. "end_repeat"   ""
+  5. end
+
+. export excel using "`d'/form3.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/
+> form3.xlsx saved
+
+. 
+. * A. no KEY column in main CSV
+. file open `fh' using "`d'/nokey.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/nokey
+    > .csv not found)
+
+. file write `fh' "q1" _n "x" _n
+
+. file close `fh'
+
+. capture odkrepeatmerge using "`d'/nokey.csv", xlsform("`d'/form1.xlsx") sav
+> ing("`d'/out.dta", replace)
+
+. if _rc != 111 {
+.         display as error "A: expected r(111) for missing KEY; got r(`=_rc')
+> "
+.         exit 9
+. }
+
+. 
+. * B. duplicate KEY in main CSV
+. file open `fh' using "`d'/dupkey.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/dupke
+    > y.csv not found)
+
+. file write `fh' "key,q1" _n "u1,a" _n "u1,b" _n
+
+. file close `fh'
+
+. capture odkrepeatmerge using "`d'/dupkey.csv", xlsform("`d'/form1.xlsx") sa
+> ving("`d'/out.dta", replace)
+
+. if _rc != 459 {
+.         display as error "B: expected r(459) for duplicate KEY; got r(`=_rc
+> ')"
+.         exit 9
+. }
+
+. 
+. * C. repeat CSV without PARENT_KEY
+. file open `fh' using "`d'/noparent.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/nopar
+    > ent.csv not found)
+
+. file write `fh' "key,q1" _n "u1,a" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/noparent-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/nopar
+    > ent-r.csv not found)
+
+. file write `fh' "key,a" _n "u1/r[1],x" _n
+
+. file close `fh'
+
+. capture odkrepeatmerge using "`d'/noparent.csv", xlsform("`d'/form2.xlsx") 
+> saving("`d'/out.dta", replace)
+
+. if _rc != 111 {
+.         display as error "C: expected r(111) for missing PARENT_KEY; got r(
+> `=_rc')"
+.         exit 9
+. }
+
+. 
+. * D. repeat KEY without trailing [n]
+. file open `fh' using "`d'/badkey.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/badke
+    > y.csv not found)
+
+. file write `fh' "key,q1" _n "u1,a" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/badkey-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/badke
+    > y-r.csv not found)
+
+. file write `fh' "key,parent_key,a" _n "u1/r1,u1,x" _n
+
+. file close `fh'
+
+. capture odkrepeatmerge using "`d'/badkey.csv", xlsform("`d'/form2.xlsx") sa
+> ving("`d'/out.dta", replace)
+
+. if _rc != 459 {
+.         display as error "D: expected r(459) for KEY without [n]; got r(`=_
+> rc')"
+.         exit 9
+. }
+
+. 
+. * E. clash between main a1 and repeat a instance 1
+. file open `fh' using "`d'/clash.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/clash
+    > .csv not found)
+
+. file write `fh' "key,a1" _n "u1,main" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/clash-r.csv", write replace text
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26/clash
+    > -r.csv not found)
+
+. file write `fh' "key,parent_key,a" _n "u1/r[1],u1,rep1" _n "u1/r[2],u1,rep2
+> " _n
+
+. file close `fh'
+
+. capture odkrepeatmerge using "`d'/clash.csv", xlsform("`d'/form3.xlsx") sav
+> ing("`d'/out.dta", replace)
+
+. if _rc != 110 {
+.         display as error "E: expected r(110) for name clash; got r(`=_rc')"
+.         exit 9
+. }
+
+. odkrepeatmerge using "`d'/clash.csv", xlsform("`d'/form3.xlsx") saving("`d'
+> /out.dta", replace) separator
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E26
+> /out.dta (1 obs, 4 vars)
+
+. use "`d'/out.dta", clear
+
+. assert a1 == "main" & a_1 == "rep1" & a_2 == "rep2"
+
+. 
+. display as result "E26 PASS: error paths return the documented codes"
+E26 PASS: error paths return the documented codes
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:48
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e2_empty_repeat_csv.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E2_empty_repeat_csv.do
+>    A repeat group nobody answered: its CSV has a header but no rows.
+>    Command should still succeed and merge the other groups.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E2"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "q0"
+  2. "begin_repeat" "hh"
+  3. "text"         "hh_q"
+  4. "end_repeat"   "hh_end"
+  5. "begin_repeat" "asset"
+  6. "text"         "asset_q"
+  7. "end_repeat"   "asset_end"
+  8. "text"         "q9"
+  9. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E2/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,q0,q9" _n "u1,a,z" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-hh.csv", write replace text
+
+. file write `fh' "key,parent_key,hh_q" _n "u1/hh[1],u1,h1" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-asset.csv", write replace text
+
+. file write `fh' "key,parent_key,asset_q" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+  note: asset has no rows - skipped
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E2/
+> f.dta (1 obs, 4 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. confirm variable key q0 hh_q1 q9
+
+. assert hh_q1[1] == "h1" & q0[1] == "a" & q9[1] == "z"
+
+. unab got : _all
+
+. local p0 : list posof "q0" in got
+
+. local ph : list posof "hh_q1" in got
+
+. local p9 : list posof "q9" in got
+
+. assert `p0' < `ph' & `ph' < `p9'
+
+. display as result "E2 PASS: empty repeat-group CSV handled"
+E2 PASS: empty repeat-group CSV handled
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:49
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e3_no_repeat_groups.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E3_no_repeat_groups.do
+>    Form with no repeat groups. Output .dta must equal the main CSV.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E3"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text" "q1"
+  2. "text" "q2"
+  3. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E3/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,q1,q2" _n "u1,a,b" _n "u2,c,d" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 0 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E3/
+> f.dta (2 obs, 3 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key q1 q2"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert _N == 2
+
+. sort key
+
+. assert q1[1] == "a" & q2[2] == "d"
+
+. display as result "E3 PASS: form without repeat groups"
+E3 PASS: form without repeat groups
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:49
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e4_three_level_values.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E4_three_level_values.do
+>    Three nested levels (a > b > c). Checks exact variable order AND that
+>    every value lands in the right variable.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E4"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "a"
+  3. "text"         "a_q"
+  4. "begin_repeat" "b"
+  5. "text"         "b_q"
+  6. "begin_repeat" "c"
+  7. "text"         "c_q"
+  8. "end_repeat"   "c_end"
+  9. "end_repeat"   "b_end"
+ 10. "end_repeat"   "a_end"
+ 11. "text"         "m2"
+ 12. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E4/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1,m2" _n "u1,M1,M2" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-a.csv", write replace text
+
+. file write `fh' "key,parent_key,a_q" _n "u1/a[1],u1,A1" _n "u1/a[2],u1,A2" 
+> _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-b.csv", write replace text
+
+. file write `fh' "key,parent_key,b_q" _n
+
+. file write `fh' "u1/a[1]/b[1],u1/a[1],B11" _n "u1/a[1]/b[2],u1/a[1],B12" _n
+>  "u1/a[2]/b[1],u1/a[2],B21" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-c.csv", write replace text
+
+. file write `fh' "key,parent_key,c_q" _n
+
+. file write `fh' "u1/a[1]/b[1]/c[1],u1/a[1]/b[1],C111" _n
+
+. file write `fh' "u1/a[1]/b[1]/c[2],u1/a[1]/b[1],C112" _n
+
+. file write `fh' "u1/a[2]/b[1]/c[1],u1/a[2]/b[1],C211" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 3 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E4/
+> f.dta (1 obs, 17 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. * naming: c_q<c>_<b>_<a>, b_q<b>_<a>, a_q<a>
+. local want "key m1 a_q1 b_q1_1 c_q1_1_1 c_q2_1_1 b_q2_1 c_q1_2_1 c_q2_2_1"
+
+. local want "`want' a_q2 b_q1_2 c_q1_1_2 c_q2_1_2 b_q2_2 c_q1_2_2 c_q2_2_2 m
+> 2"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert a_q1 == "A1" & a_q2 == "A2"
+
+. assert b_q1_1 == "B11" & b_q2_1 == "B12" & b_q1_2 == "B21" & b_q2_2 == ""
+
+. assert c_q1_1_1 == "C111" & c_q2_1_1 == "C112" & c_q1_1_2 == "C211"
+
+. assert c_q1_2_1 == "" & c_q2_2_2 == ""
+
+. display as result "E4 PASS: three-level nesting, order and values"
+E4 PASS: three-level nesting, order and values
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:51
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e5_ten_plus_instances.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E5_ten_plus_instances.do
+>    Repeat with 11 instances that also has a nested child group.
+>    Instance 10 must land in *10, not *2 (string sort of hh[10] < hh[2]).
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E5"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "hh"
+  3. "text"         "hh_q"
+  4. "begin_repeat" "person"
+  5. "text"         "p_q"
+  6. "end_repeat"   "person_end"
+  7. "end_repeat"   "hh_end"
+  8. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E5/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1" _n "u1,M" _n
+
+. file close `fh'
+
+. 
+. clear
+
+. set obs 11
+Number of observations (_N) was 0, now 11.
+
+. generate key        = "u1/hh[" + string(_n) + "]"
+
+. generate parent_key = "u1"
+
+. generate hh_q       = "h" + string(_n)
+
+. export delimited using "`d'/f-hh.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E5/f
+> -hh.csv saved
+
+. 
+. clear
+
+. set obs 11
+Number of observations (_N) was 0, now 11.
+
+. generate key        = "u1/hh[" + string(_n) + "]/person[1]"
+
+. generate parent_key = "u1/hh[" + string(_n) + "]"
+
+. generate p_q        = "p" + string(_n)
+
+. export delimited using "`d'/f-person.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E5/f
+> -person.csv saved
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E5/
+> f.dta (1 obs, 24 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. confirm variable hh_q1 hh_q2 hh_q10 hh_q11 p_q1_1 p_q1_2 p_q1_10
+
+. foreach i of numlist 1/11 {
+  2.         if hh_q`i'[1] != "h`i'" {
+  3.                 display as error "hh_q`i' = " hh_q`i'[1] "  (expected h`
+> i')"
+  4.                 exit 9
+  5.         }
+  6.         if p_q1_`i'[1] != "p`i'" {
+  7.                 display as error "p_q1_`i' = " p_q1_`i'[1] "  (expected 
+> p`i')"
+  8.                 exit 9
+  9.         }
+ 10. }
+
+. display as result "E5 PASS: 10+ instances keep their instance numbers"
+E5 PASS: 10+ instances keep their instance numbers
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:52
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e6_blank_end_repeat_names.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E6_blank_end_repeat_names.do
+>    end_repeat rows with a blank name column - the normal XLSForm style.
+>    Questions after the repeat must still be ordered correctly.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E6"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r1"
+  3. "text"         "a"
+  4. "end_repeat"   ""
+  5. "text"         "m2"
+  6. "begin_repeat" "r2"
+  7. "text"         "b"
+  8. "end_repeat"   ""
+  9. "text"         "m3"
+ 10. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E6/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1,m2,m3" _n "u1,x,y,z" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r1.csv", write replace text
+
+. file write `fh' "key,parent_key,a" _n "u1/r1[1],u1,a1" _n "u1/r1[2],u1,a2" 
+> _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r2.csv", write replace text
+
+. file write `fh' "key,parent_key,b" _n "u1/r2[1],u1,b1" _n "u1/r2[2],u1,b2" 
+> _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E6/
+> f.dta (1 obs, 8 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key m1 a1 a2 m2 b1 b2 m3"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. display as result "E6 PASS: blank end_repeat names"
+E6 PASS: blank end_repeat names
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:54
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e7_uppercase_key_columns.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E7_uppercase_key_columns.do
+>    ODK Central writes KEY / PARENT_KEY in upper case. Isolated check.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E7"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin_repeat" "r"
+  3. "text"         "a"
+  4. "end_repeat"   "r_end"
+  5. "text"         "m2"
+  6. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E7/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "m1,m2,KEY" _n "x,y,u1" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+
+. file write `fh' "a,PARENT_KEY,KEY" _n "a1,u1,u1/r[1]" _n "a2,u1,u1/r[2]" _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E7/
+> f.dta (1 obs, 5 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key m1 a1 a2 m2"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert a1 == "a1" & a2 == "a2"
+
+. display as result "E7 PASS: upper-case KEY/PARENT_KEY"
+E7 PASS: upper-case KEY/PARENT_KEY
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:55
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e8_digit_suffix_collision.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E8_digit_suffix_collision.do
+>    Questions q1 and q11 in a repeat with 11 instances.
+>    Default naming gives q1 #11 -> q111 and q11 #1 -> q111 (same name):
+>    must error clearly. With separator: q1_11 vs q11_1.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E8"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "begin_repeat" "r"
+  2. "text"         "q1"
+  3. "text"         "q11"
+  4. "end_repeat"   "r_end"
+  5. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E8/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key" _n "u1" _n
+
+. file close `fh'
+
+. clear
+
+. set obs 11
+Number of observations (_N) was 0, now 11.
+
+. generate key        = "u1/r[" + string(_n) + "]"
+
+. generate parent_key = "u1"
+
+. generate q1         = "a" + string(_n)
+
+. generate q11        = "b" + string(_n)
+
+. export delimited using "`d'/f-r.csv", replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E8/f
+> -r.csv saved
+
+. 
+. * default naming: must stop with an error, not lose data silently
+. capture odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") repl
+> ace
+
+. if _rc == 0 {
+.         display as error "Default naming should have stopped on the q1#11 /
+>  q11#1 collision"
+.         exit 9
+. }
+
+. display as text "default naming correctly refused (r`=_rc')"
+default naming correctly refused (r110)
+
+. 
+. * separator option: q1_11 and q11_1 are distinct
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") separator re
+> place
+
+Reading the XLSForm...
+Found 1 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E8/
+> f.dta (1 obs, 23 vars)
+
+. use "`d'/f.dta", clear
+
+. local want "key"
+
+. forvalues i = 1/11 {
+  2.         local want "`want' q1_`i' q11_`i'"
+  3. }
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. assert q1_11 == "a11" & q11_1 == "b1" & q1_1 == "a1" & q11_11 == "b11"
+
+. display as result "E8 PASS: collision refused by default, resolved by separ
+> ator"
+E8 PASS: collision refused by default, resolved by separator
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:56
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+----------------------------------------------------------------------
+RUNNING tests/edge/e9_groups_and_spaced_types.do
+----------------------------------------------------------------------
+
+. /*----------------------------------------------------------------------
+>    E9_groups_and_spaced_types.do
+>    'begin repeat' (space form), begin/end group rows, note rows,
+>    and two top-level repeats interleaved with main questions.
+>    Run from the repo root (or via tests/run_all_tests.do).
+> ----------------------------------------------------------------------*/
+. version 14
+
+. clear all
+
+. set more off
+
+. local repo "`c(pwd)'"
+
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. capture mkdir "`repo'/tests/tmp_edge"
+
+. local d "`repo'/tests/tmp_edge/E9"
+
+. capture mkdir "`d'"
+
+. tempname fh
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "text"         "m1"
+  2. "begin group"  "g1"
+  3. "text"         "m2"
+  4. "end group"    ""
+  5. "begin repeat" "r"
+  6. "note"         "n1"
+  7. "text"         "r_q"
+  8. "end repeat"   ""
+  9. "text"         "m3"
+ 10. "begin_repeat" "s"
+ 11. "text"         "s_q"
+ 12. "end_repeat"   ""
+ 13. "text"         "m4"
+ 14. end
+
+. export excel using "`d'/f.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E9/f
+> .xlsx saved
+
+. 
+. file open `fh' using "`d'/f.csv", write replace text
+
+. file write `fh' "key,m1,m2,m3,m4" _n "u1,w,x,y,z" _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-r.csv", write replace text
+
+. file write `fh' "key,parent_key,r_q" _n "u1/r[1],u1,r1" _n "u1/r[2],u1,r2" 
+> _n
+
+. file close `fh'
+
+. file open `fh' using "`d'/f-s.csv", write replace text
+
+. file write `fh' "key,parent_key,s_q" _n "u1/s[1],u1,s1" _n "u1/s[2],u1,s2" 
+> _n
+
+. file close `fh'
+
+. 
+. odkrepeatmerge, formid("f") formtitle("f.xlsx") formloc("`d'") replace
+
+Reading the XLSForm...
+Found 2 repeat group(s)
+
+Loading CSV files...
+CSV files loaded
+
+Merging repeat groups (deepest first)...
+Merge done
+
+Ordering variables...
+Ordering done
+
+Saved H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/tmp_edge/E9/
+> f.dta (1 obs, 9 vars)
+
+. 
+. use "`d'/f.dta", clear
+
+. local want "key m1 m2 r_q1 r_q2 m3 s_q1 s_q2 m4"
+
+. unab got : _all
+
+. if "`got'" != "`want'" {
+.         display as error "Variable order mismatch"
+.         display as error "  want: `want'"
+.         display as error "  got : `got'"
+.         exit 9
+. }
+
+. display as result "E9 PASS: groups, notes, spaced types, two top-level repe
+> ats"
+E9 PASS: groups, notes, spaced types, two top-level repeats
+
+. 
+end of do-file
+-----------------------------------------------------------------------------
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ opened on:  19 Oct 2026, 07:11:57
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. 
+. * --- Summary ------------------------------------------------------------
+. display as text _n "{hline 70}" _n "SUMMARY" _n "{hline 70}"
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+
+. foreach r of local results {
+  2.         if substr(`"`r'"', 1, 4) == "PASS" display as result `"`r'"'
+  3.         else display as error `"`r'"'
+  4. }
+PASS        tests/regression_nested_order.do
+PASS        tests/regression_prefix_collision.do
+PASS        audit/odkrepeatmerge_cert.do
+PASS        audit/examples.do
+PASS        tests/edge/e10_separator_nested.do
+PASS        tests/edge/e11_prefix_ten_plus.do
+PASS        tests/edge/e12_group_prefixed_headers.do
+PASS        tests/edge/e13_saving_replace_results.do
+PASS        tests/edge/e14_unmatched_report.do
+PASS        tests/edge/e15_allstring.do
+PASS        tests/edge/e16_xlsform_synonym.do
+PASS        tests/edge/e17_maxvar_guard.do
+PASS        tests/edge/e18_using_separate_folders.do
+PASS        tests/edge/e19_four_level_nesting.do
+PASS        tests/edge/e1_odk_central_realistic.do
+PASS        tests/edge/e20_instance_gaps.do
+PASS        tests/edge/e21_rows_out_of_order.do
+PASS        tests/edge/e22_sibling_repeats_values.do
+PASS        tests/edge/e23_multi_submission_values.do
+PASS        tests/edge/e24_survey_not_first_sheet.do
+PASS        tests/edge/e25_paths_with_spaces.do
+PASS        tests/edge/e26_error_paths.do
+PASS        tests/edge/e2_empty_repeat_csv.do
+PASS        tests/edge/e3_no_repeat_groups.do
+PASS        tests/edge/e4_three_level_values.do
+PASS        tests/edge/e5_ten_plus_instances.do
+PASS        tests/edge/e6_blank_end_repeat_names.do
+PASS        tests/edge/e7_uppercase_key_columns.do
+PASS        tests/edge/e8_digit_suffix_collision.do
+PASS        tests/edge/e9_groups_and_spaced_types.do
+
+. display as text "{hline 70}"
+----------------------------------------------------------------------
+
+. display as result "Passed: `npass'" as text "   " as error "Failed: `nfail'
+> "
+Passed: 30   Failed: 0
+
+. log close runner
+      name:  runner
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge/tests/run_a
+> ll_tests.log
+  log type:  text
+ closed on:  19 Oct 2026, 07:11:57
+-----------------------------------------------------------------------------

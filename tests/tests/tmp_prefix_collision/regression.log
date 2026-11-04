@@ -1,0 +1,104 @@
+-----------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests
+> /tmp_prefix_collision/regression.log
+  log type:  text
+ opened on:  18 Oct 2026, 21:04:01
+
+. 
+. adopath ++ "`repo'"
+  [1]              "H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\test
+> s"
+  [2]  (BASE)      "C:\Program Files\Stata17\ado\base/"
+  [3]  (SITE)      "C:\Program Files\Stata17\ado\site/"
+  [4]              "."
+  [5]  (PERSONAL)  "C:\Users\Arman\ado\personal/"
+  [6]  (PLUS)      "C:\Users\Arman\ado\plus/"
+  [7]  (OLDPLACE)  "c:\ado/"
+
+. 
+. clear
+
+. input str20 type str20 name
+
+                     type                  name
+  1. "begin_repeat" "rep"
+  2. "text" "q1"
+  3. "text" "q10"
+  4. "end_repeat" "rep_end"
+  5. "text" "after_rep"
+  6. end
+
+. export excel using "`testdir'/testform.xlsx", firstrow(variables) replace
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests/tmp_pre
+> fix_collision/testform.xlsx saved
+
+. 
+. clear
+
+. input str10 key str5 after_rep
+
+            key  after_rep
+  1. "uuid1" "done"
+  2. end
+
+. export delimited using "`testdir'/testform.csv", replace
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests/tmp_prefix_c
+    > ollision/testform.csv not found)
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests/tmp_pre
+> fix_collision/testform.csv saved
+
+. 
+. clear
+
+. input str20 key str10 parent_key str5 q1 str5 q10
+
+                      key  parent_key         q1        q10
+  1. "uuid1/rep[1]" "uuid1" "a1" "b1"
+  2. "uuid1/rep[2]" "uuid1" "a2" "b2"
+  3. end
+
+. export delimited using "`testdir'/testform-rep.csv", replace
+(file H:\My
+    Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests/tmp_prefix_c
+    > ollision/testform-rep.csv not found)
+file H:\My Drive\00_Workspace\Repositories\odkrepeatmerge\tests/tests/tmp_pre
+> fix_collision/testform-rep.csv saved
+
+. 
+. odkrepeatmerge, formid("testform") formtitle("testform.xlsx") formloc("`tes
+> tdir'")
+
+Form loading and repeat group splitting initiated...
+Form loading and repeat group splitting done
+
+All repeat group data loading initiated...
+All repeat group data loading done
+
+All nested group data merge initiated...
+All nested group data merge done
+
+Nested group data merge with main data initiated...
+Nested group data merge with main data done
+
+Data ordering initiated...
+Data ordering done
+
+. 
+. use "`testdir'/testform.dta", clear
+
+. unab allvars : _all
+
+. 
+. local expected "key q11 q101 q12 q102 after_rep"
+
+. assert "`allvars'" == "`expected'"
+assertion is false
+r(9);
+
+end of do-file
+
+r(9);
+
+. exit, clear

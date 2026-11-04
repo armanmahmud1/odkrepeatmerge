@@ -83,13 +83,6 @@ odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") a
 | 1.2.0 | Fixed blank `end_repeat` names, instance numbers ≥ 10, empty repeat files, forms without repeats; `separator` option |
 | 1.1.0 | Code clean-up for SSC: `preserve`, tempfiles, no global macros, help file |
 
-## Testing
-The `tests/` and `audit/` folders hold 30 test files covering nesting up to four levels, instance numbering, group prefixes, name clashes, error codes, file and folder handling, and the help-file examples. Run them all from the repository root:
-```stata
-cd "path/to/odkrepeatmerge"
-do tests/run_all_tests.do
-```
-
 ## Issues
 Report problems at https://github.com/armanmahmud1/odkrepeatmerge/issues
 
