@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.4.0 18oct2026 Arman Mahmud}{...}
+{* *! version 1.5.0 23nov2026 Arman Mahmud}{...}
 {viewerjumpto "Syntax" "odkrepeatmerge##syntax"}{...}
 {viewerjumpto "Description" "odkrepeatmerge##description"}{...}
 {viewerjumpto "Files and folders" "odkrepeatmerge##files"}{...}
@@ -9,7 +9,7 @@
 {viewerjumpto "Stored results" "odkrepeatmerge##results"}{...}
 {viewerjumpto "Author" "odkrepeatmerge##author"}{...}
 {hline}
-help for {bf:odkrepeatmerge} {right:version 1.4.0 18oct2026}
+help for {bf:odkrepeatmerge} {right:version 1.5.0 23nov2026}
 {hline}
 
 {title:Title}
@@ -37,7 +37,6 @@ with its folder, e.g. {cmd:"D:/survey/raw/hh_survey.csv"}.
 {synopthdr}
 {synoptline}
 {syntab:Required}
-{synopt:{opt using} {it:maincsv}}main (parent) CSV file{p_end}
 {synopt:{opt xls:form(filename)}}XLSForm file used to collect the data{p_end}
 
 {syntab:Optional}
@@ -118,7 +117,8 @@ it (see {help odkrepeatmerge##files:Files and folders}).
 {phang}
 {cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)} saves the result under
 another name or in another folder.  Add {cmd:, replace} inside the
-parentheses to overwrite an existing file.
+parentheses to overwrite an existing file.  The output must be a
+{cmd:.dta} file; the extension is added if omitted.
 
 {phang}
 {opt replace} overwrites the output file if it already exists.  Without
@@ -133,8 +133,10 @@ names would clash and {cmd:odkrepeatmerge} stops with an error.
 
 {phang}
 {opt allstring} imports every CSV column as a string.  By default numbers
-are detected automatically, so codes such as {cmd:007} become {cmd:7}.
-Use {helpb destring} afterwards for the variables you want as numbers.
+are detected automatically (decimals are stored as {cmd:double}, so GPS
+coordinates keep full precision), and codes such as {cmd:007} become
+{cmd:7}.  Use {helpb destring} afterwards for the variables you want as
+numbers.
 
 
 {marker remarks}{...}
@@ -148,11 +150,28 @@ question {cmd:ill_type} for illness 2 of member 1 ({cmd:ill_type_2_1} with
 {opt separator}).
 
 {pstd}
+{bf:Variable labels.} Each variable gets the question's label from the
+XLSForm (the first {cmd:label} column), with the instance numbers in
+brackets for repeat questions: {cmd:[2_1] Type of illness}.  Questions
+without a label are labelled with their name.
+
+{pstd}
 {bf:Order.} Variables follow the order of the {cmd:survey} sheet, with each
-repeat instance kept together.  Columns that are not in the XLSForm (for
-example from an older form version) are placed at the end and listed on
-screen.  ODK Central system columns such as {cmd:SubmissionDate} are placed at
-the end without being listed.
+repeat instance kept together.  Notes and the parts of a geopoint
+({it:gps}{cmd:latitude}, {it:gps}{cmd:longitude}, ...) are placed with their
+question.  Columns that are not in the XLSForm (for example from an older
+form version, or split select_multiple columns such as {cmd:food/1}) are
+placed at the end and listed on screen.  ODK Central system columns such as
+{cmd:SubmissionDate} are placed at the end without being listed.
+
+{pstd}
+{bf:Question names.} Names must be unique across the form; a name used
+twice is reported when the XLSForm is read, and stops the command with an
+error if both columns would get the same variable name.  Hyphens and dots
+in names are dropped, as {helpb import delimited} does
+({cmd:start-geopoint} becomes {cmd:startgeopoint}).  If select_multiple
+questions inside a repeat are exported as separate columns ({cmd:food/1},
+{cmd:food/11}), use {opt separator}.
 
 {pstd}
 {bf:Instance numbers.} Instance numbers are read from the {cmd:[}{it:n}{cmd:]}
@@ -204,7 +223,7 @@ that would clash, names longer than 32 characters, and data wider than
 
 {p2col 5 20 24 2: Macros}{p_end}
 {synopt:{cmd:r(fn)}}output file name{p_end}
-{synopt:{cmd:r(unmatched)}}variables not found in the XLSForm{p_end}
+{synopt:{cmd:r(unmatched)}}variables not found in the XLSForm (not stored if there are none){p_end}
 
 
 {marker author}{...}
