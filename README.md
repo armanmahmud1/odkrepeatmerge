@@ -34,7 +34,7 @@ odkrepeatmerge using maincsv, xlsform(filename) [saving(filename [, replace]) re
 |---|---|
 | `saving(file [, replace])` | Save the result under another name or folder (must be a `.dta` file). Add `, replace` inside to overwrite |
 | `replace` | Overwrite the output file if it exists. The command never overwrites without it, so add it when you run again |
-| `separator` | Name variables `q1_11` instead of `q111`. Use it when two questions differ only by trailing digits (`q1`, `q11`), or when select_multiple choices inside a repeat are exported as separate columns (`food/1`, `food/11`). Without it, `q1` instance 11 and `q11` instance 1 would both be `q111`; every name is checked before it is created, and the command stops with an error if two would be the same |
+| `separator` | Put `_` before the instance number: question `q1`, instance 11, becomes `q1_11` instead of `q111`. Recommended when question names end in a digit; needed when two questions differ only by trailing digits (`q1`, `q11`), or when select_multiple choices inside a repeat are exported as separate columns (`food/1`, `food/11`). Without it, `q1` instance 11 and `q11` instance 1 would both be `q111`; every name is checked before it is created, and the command stops with an error if two would be the same |
 | `allstring` | Import all columns as strings, so codes like `007` don't become `7`, and integers longer than 15 digits (national ID numbers) are kept exactly. Use `destring` afterwards where needed |
 
 ## Files and folders

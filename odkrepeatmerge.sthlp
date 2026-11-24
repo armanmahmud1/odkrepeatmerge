@@ -42,7 +42,7 @@ with its folder, e.g. {cmd:"D:/survey/raw/hh_survey.csv"}.
 {syntab:Optional}
 {synopt:{cmd:saving(}{it:filename} [{cmd:, replace}]{cmd:)}}output file; default is {it:stem}{cmd:.dta} in the current working directory{p_end}
 {synopt:{opt replace}}overwrite the output file if it exists{p_end}
-{synopt:{opt sep:arator}}name variables {cmd:q1_11} instead of {cmd:q111}{p_end}
+{synopt:{opt sep:arator}}put {cmd:_} before the instance number: question {cmd:q1}, instance 11 becomes {cmd:q1_11} (not {cmd:q111}); recommended when question names end in a digit{p_end}
 {synopt:{opt all:string}}import all columns as strings (keeps leading zeros){p_end}
 {synoptline}
 
@@ -127,9 +127,12 @@ parentheses to overwrite an existing file.  The output must be a
 overwrites a file; use it when you run the command again.
 
 {phang}
-{opt separator} puts an underscore between a question name and its instance
-number: {cmd:q1_11} instead of {cmd:q111}.  Use it when two questions differ
-only by trailing digits (e.g. {cmd:q1} and {cmd:q11}).  Without it,
+{opt separator} puts an underscore before the instance number: question
+{cmd:q1}, instance 11, becomes {cmd:q1_11} instead of {cmd:q111}.  It is
+recommended when question names end in a digit, and needed when two
+questions differ only by trailing digits (e.g. {cmd:q1} and {cmd:q11}) or
+when select_multiple choices inside a repeat are exported as separate
+columns ({cmd:food/1}, {cmd:food/11}).  Without it,
 {cmd:q1} instance 11 and {cmd:q11} instance 1 would both be {cmd:q111};
 {cmd:odkrepeatmerge} checks every name before it is created and stops with
 an error if two would be the same.
