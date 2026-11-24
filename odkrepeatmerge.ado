@@ -1,4 +1,4 @@
-*! version 1.5.0 23nov2026 Arman Mahmud
+*! version 1.5.0 24nov2026 Arman Mahmud
 
 program define odkrepeatmerge, rclass
 	version 14
@@ -43,8 +43,13 @@ program define odkrepeatmerge, rclass
 	}
 	local form_name `"`xlsform'"'
 
-	confirm file `"`form_name'"'
-	confirm file `"`mainfile'"'
+	foreach __f in form_name mainfile {
+		capture confirm file `"``__f''"'
+		if _rc {
+			display as error `"file ``__f'' not found (or it cannot be read; is it open in another program?)"'
+			exit 601
+		}
+	}
 
 	* --- Output file: saving(filename [, replace]) or stem.dta in the cwd ---
 	if `"`saving'"' != "" {
@@ -66,17 +71,18 @@ program define odkrepeatmerge, rclass
 		display as error `"saving(): the output must be a .dta file, not `__ext'"'
 		exit 198
 	}
-	if "`overwrite'" == "" {
-		capture confirm new file `"`savefile'"'
-		local rc = _rc
-		if `rc' == 602 {
+	* checked now, so a missing folder is not found only after all the work
+	capture confirm new file `"`savefile'"'
+	local rc = _rc
+	if `rc' == 602 {
+		if "`overwrite'" == "" {
 			display as error `"file `savefile' already exists; specify replace"'
 			exit 602
 		}
-		else if `rc' {
-			display as error `"cannot write `savefile'"'
-			exit `rc'
-		}
+	}
+	else if `rc' {
+		display as error `"cannot write `savefile' (does the folder exist?)"'
+		exit `rc'
 	}
 
 	preserve
@@ -126,9 +132,17 @@ qui {
 
 	tempfile question_meta variable_order main expect
 	tempname qh
+	* qname: variable name import delimited makes from the question name
+	* qraw/qpath: CSV header without/with group prefix (relative to the
+	*            enclosing repeat), as ODK Central writes it
 	postfile `qh' str128 qname str244 qlabel str244 qtemplate int qdepth ///
-		long qseq byte qgeo int qgroup using "`question_meta'", replace
+		long qseq byte qgeo int qgroup str128 qraw str244 qpath ///
+		using "`question_meta'", replace
 
+	* stack of open groups (G:name) and repeats (R:name); gpref = names of
+	* the groups opened since the innermost repeat, joined by "-"
+	local gstack
+	local gpref
 	local depth = 0
 	local pos0 = 0
 	local templ0 ""
@@ -149,7 +163,25 @@ qui {
 		local __oname = name[`x']
 
 		if inlist("`__type'", "begin_group", "begin group", "begin_repeat", "begin repeat") {
-			local grpnames `grpnames' `=lower(name[`x'])'
+			local grpnames `grpnames' `=ustrlower(name[`x'])'
+			local __k = cond(inlist("`__type'", "begin_repeat", "begin repeat"), "R", "G")
+			local gstack `gstack' `__k':`__oname'
+		}
+		else if inlist("`__type'", "end_group", "end group", "end_repeat", "end repeat") {
+			local __n : word count `gstack'
+			local __s
+			forvalues i = 1/`=`__n' - 1' {
+				local __s `__s' `: word `i' of `gstack''
+			}
+			local gstack `__s'
+		}
+		if strpos("`__type'", "begin") | strpos("`__type'", "end") {
+			local gpref
+			foreach __e of local gstack {
+				if substr("`__e'", 1, 2) == "R:" local gpref
+				else if "`gpref'" == "" local gpref = substr("`__e'", 3, .)
+				else local gpref `gpref'-`=substr("`__e'", 3, .)'
+			}
 		}
 
 		if inlist("`__type'", "begin_repeat", "begin repeat") {
@@ -179,9 +211,10 @@ qui {
 			local __geo = inlist("`__type'", "geopoint", "start-geopoint", "start_geopoint")
 			* the variable name import delimited makes from this column:
 			* "-" and "." dropped, at most 32 characters
-			local __vname = lower(usubstr(ustrregexra(name[`x'], "[^\p{L}\p{N}_]", ""), 1, 32))
+			local __vname = ustrlower(usubstr(ustrregexra(name[`x'], "[^\p{L}\p{N}_]", ""), 1, 32))
+			local __qpath = cond(`"`gpref'"' == "", "`__oname'", `"`gpref'-`__oname'"')
 			post `qh' ("`__vname'") (usubstr(_orm_label[`x'], 1, 80)) ("`__templ'") ///
-				(`depth') (`qseq') (`__geo') (`gcur`depth'')
+				(`depth') (`qseq') (`__geo') (`gcur`depth'') ("`__oname'") (`"`__qpath'"')
 			local qnamelist `qnamelist' `__vname'
 		}
 	}
@@ -207,7 +240,9 @@ qui {
 		noisily display as error `"`mainfile' has no data rows"'
 		exit 2000
 	}
-	_orm_ungroup using `"`mainfile'"', names(`qnamelist' `__sys') groups(`grpnames')
+	_orm_ungroup using `"`mainfile'"', meta("`question_meta'") group(0) ///
+		names(`qnamelist' `__sys') groups(`grpnames')
+	unab own0 : _all
 	capture confirm variable key
 	if _rc {
 		noisily display as error `"`mainfile' has no KEY column"'
@@ -237,8 +272,20 @@ qui {
 			noisily display as error `"`fn' must have KEY and PARENT_KEY columns"'
 			exit 111
 		}
-		_orm_ungroup using `"`fn'"', names(`qnamelist' `__sys') groups(`grpnames')
+		_orm_ungroup using `"`fn'"', meta("`question_meta'") group(`g') ///
+			names(`qnamelist' `__sys') groups(`grpnames')
+		capture isid key
+		if _rc {
+			noisily display as error `"`fn': KEY is missing or duplicated in some rows"'
+			exit 459
+		}
+		count if missing(parent_key)
+		if r(N) > 0 {
+			noisily display as error `"`fn': PARENT_KEY is empty in `r(N)' row(s)"'
+			exit 459
+		}
 		local gactive`g' 1
+		local nrows`g' = _N
 		ds key parent_key, not
 		local own`g' `r(varlist)'
 		tempfile tf`g'
@@ -271,75 +318,93 @@ qui {
 			rename parent_key key
 			capture isid key _orm_j
 			if _rc {
-				noisily display as error "`gname`g'': the same KEY appears more than once in the repeat-group CSV"
+				noisily display as error "`gname`g'': two rows have the same PARENT_KEY and instance number [n]"
 				exit 459
 			}
 
-			if "`sep'" != "" {
+			if "`sep'" != "" & "`own`g''" != "" {
+				local __new
 				foreach v of local own`g' {
-					if length("`v'`sep'") > 32 {
+					if ustrlen("`v'`sep'") > 32 {
 						noisily display as error "`v'`sep' would exceed 32 characters; shorten question `v'"
 						exit 198
 					}
-					capture confirm new variable `v'`sep'
-					if _rc {
-						noisily display as error "`v' (repeat group `gname`g'') becomes `v'`sep', which is already used by a nested repeat question; rename one of them"
-						exit 110
-					}
-					rename `v' `v'`sep'
+					local __new `__new' `v'`sep'
 				}
+				* new names must not be taken by (nested) variables that keep their name
+				ds key _orm_j `own`g'', not
+				local __keep `r(varlist)'
+				local __clash : list __new & __keep
+				if "`__clash'" != "" {
+					local __c : word 1 of `__clash'
+					noisily display as error "`__c' (repeat group `gname`g'') is already used by a nested repeat question; rename one of them"
+					exit 110
+				}
+				* one group rename, so a and a_ become a_ and a__ in any order
+				rename (`own`g'') (`__new')
 			}
 
 			ds key _orm_j, not
 			local stubs `r(varlist)'
 			if "`stubs'" == "" continue
 
-			* name-length check (nested names get one more "_" later)
 			levelsof _orm_j, local(jvals)
-			local maxlen = cond(`gpidx`g'' > 0, 31, 32)
-			foreach s of local stubs {
-				foreach j of local jvals {
-					if length("`s'`j'") > `maxlen' {
-						noisily display as error "`s'`j' (repeat group `gname`g'') would exceed Stata's 32-character name limit; shorten the question name"
-						exit 198
-					}
-				}
-			}
-
-			* variable-limit check: reshape wide multiplies variables
+			* variable-limit check: reshape wide multiplies variables (and
+			* needs one variable more while it works)
 			local __ns : word count `stubs'
 			local __nj : word count `jvals'
-			local __newk = c(k) - `__ns' - 1 + `__ns' * `__nj'
-			if `__newk' > c(maxvar) {
-				noisily display as error "Repeat group `gname`g'' needs `__newk' variables in wide form; the limit is `c(maxvar)'."
+			local __newk = c(k) - `__ns' - 1 + `__ns' * `__nj' + 1
+			if `__newk' + 1 > c(maxvar) {
+				noisily display as error "Repeat group `gname`g'' needs `=`__newk' + 1' variables in wide form; the limit is `c(maxvar)'."
 				noisily display as error "Raise it with {cmd:set maxvar} (Stata SE/MP) or drop unneeded questions."
 				exit 900
 			}
 
-			capture reshape wide `stubs', i(key) j(_orm_j)
-			if _rc {
-				local rc = _rc
-				noisily display as error "reshape wide failed for repeat group `gname`g'' (r(`rc'))."
+			* every name reshape will create (stub + instance number) must be
+			* unique and short enough; nested names get one more "_" later
+			local maxlen = cond(`gpidx`g'' > 0, 31, 32)
+			mata: _orm_widecheck(st_local("stubs"), st_local("jvals"), `maxlen')
+			if "`__long'" != "" {
+				noisily display as error "`__long' (repeat group `gname`g'') would exceed Stata's 32-character name limit; shorten the question name"
+				exit 198
+			}
+			if "`__dup'" != "" {
+				noisily display as error "Repeat group `gname`g'': `__dupwhat' would both be named `__dup'."
 				if "`sep'" == "" {
-					noisily display as error "If two questions differ only by trailing digits (e.g. q1 and q11), or select_multiple"
-					noisily display as error "choices are exported as separate columns (food/1, food/11), re-run with the separator option."
+					noisily display as error "Re-run with the separator option (names like q_1, q1_1)."
 				}
+				exit 110
+			}
+
+			* rows per parent, to count orphan rows after the merge
+			bysort key: generate long _orm_rows = _N
+			capture reshape wide `stubs', i(key) j(_orm_j)
+			local rc = _rc
+			* reshape leaves globals and characteristics behind
+			capture macro drop ReS_*
+			local __chars : char _dta[]
+			foreach c of local __chars {
+				if substr("`c'", 1, 4) == "ReS_" char _dta[`c']
+			}
+			if `rc' {
+				noisily display as error "reshape wide failed for repeat group `gname`g'' (r(`rc'))."
 				exit `rc'
 			}
 
-			if `gpidx`g'' > 0 {
-				rename * *_
-				rename key_ key
-			}
-			ds key, not
+			ds key _orm_rows, not
 			local childvars `r(varlist)'
+			if `gpidx`g'' > 0 {
+				rename (`childvars') (=_)
+				ds key _orm_rows, not
+				local childvars `r(varlist)'
+			}
 			tempfile child
 			save "`child'"
 
 			local p = `gpidx`g''
 			if `p' > 0 {
 				if !`gactive`p'' {
-					noisily display as text "  note: `gname`g'' has rows but parent `gname`p'' has none - dropped"
+					noisily display as text "  note: `nrows`g'' `gname`g'' row(s) dropped: parent repeat group `gname`p'' has no rows"
 					continue
 				}
 				use "`tf`p''", clear
@@ -360,19 +425,19 @@ qui {
 				}
 			}
 			local __nc : word count `childvars'
-			if c(k) + `__nc' + 1 > c(maxvar) {
+			if c(k) + `__nc' + 2 > c(maxvar) {
 				noisily display as error "Merging repeat group `gname`g'' needs more than `c(maxvar)' variables."
 				noisily display as error "Raise the limit with {cmd:set maxvar} (Stata SE/MP) or drop unneeded questions."
 				exit 900
 			}
 
 			merge 1:1 key using "`child'", generate(_orm_m)
-			count if _orm_m == 2
+			summarize _orm_rows if _orm_m == 2, meanonly
 			if r(N) > 0 {
-				noisily display as text "  note: `r(N)' `gname`g'' row(s) had no matching parent and were dropped"
+				noisily display as text "  note: `r(sum)' `gname`g'' row(s) had no matching parent and were dropped"
 			}
 			drop if _orm_m == 2
-			drop _orm_m
+			drop _orm_m _orm_rows
 
 			if `p' > 0 save "`tf`p''", replace
 			else save "`main'", replace
@@ -456,7 +521,15 @@ qui {
 		bysort qseq _sfx: generate byte _part = _n - 1
 		generate str10 _pn = ""
 		replace _pn = word("latitude longitude altitude accuracy", _part) if _part > 0
-		generate str244 actual = qname + _pn + cond(`g' > 0, "`sep'" + _sfx, "")
+		* only questions whose column is in this group's CSV: otherwise a
+		* name made by another question (main q1 vs repeat q, instance 1)
+		* would get this question's label and position
+		generate str244 _stub = usubstr(qname + _pn, 1, 32)
+		mata: st_store(., st_addvar("byte", "_own"), ///
+			_orm_inlist(st_sdata(., "_stub"), tokens(st_local("own`g'"))))
+		keep if _own
+		if _N == 0 continue
+		generate str244 actual = _stub + cond(`g' > 0, "`sep'" + _sfx, "")
 		generate str244 vlab = cond(qlabel != "", qlabel, qname)
 		replace vlab = vlab + " (" + _pn + ")" if _part > 0
 		if `g' > 0 replace vlab = "[" + _sfx + "] " + vlab
@@ -552,45 +625,109 @@ qui {
 end
 
 
-* Rename group-prefixed CSV columns (ODK Central default: group-question)
-* back to the XLSForm field name. The original headers are read from the
-* CSV's first row (variable labels are cut at 80 characters, too short for
-* deeply nested groups); rename only when the last "-" segment is a
-* field in the form (or a Central system column such as meta-instanceID),
-* every earlier segment is a group/repeat name from the form, and the new
-* name is free. Geopoint parts keep their part name: grp-gps-Latitude
-* becomes gpslatitude (as gps-Latitude does without group names).
+* Give CSV columns the variable name of their XLSForm question.
+* ODK Central writes a field inside groups as group-subgroup-field (a
+* geopoint as field-Latitude, ...), or only field with "Remove group
+* names"; import delimited turns that header into groupsubgroupfield, or
+* v# if that name is taken. The original headers are read from the CSV's
+* first row (variable labels are cut at 80 characters).
+*   1. A header equal to a question's path (group-...-field, relative to
+*      its repeat) or to its bare name gets that question's name.
+*   2. Otherwise, if every "-" segment but the last is a group or repeat
+*      name and the last is a question (or Central system column), the
+*      column gets that name if it is free (e.g. meta-instanceID).
+* Two columns of the same question (a name used twice in the form) stop
+* with an error.
 program define _orm_ungroup
 	version 14
-	syntax using/ [, names(string) groups(string)]
+	syntax using/ , meta(string) group(integer) [names(string) groups(string)]
 	unab __vars : _all
 	local K : word count `__vars'
+	local j 0
+	foreach v of local __vars {
+		local ++j
+		local v`j' `v'
+		local h`j' : variable label `v'
+		if `"`h`j''"' == "" local h`j' `v'
+	}
 	preserve
 	quietly import delimited using `"`using'"', clear varnames(nonames) ///
 		rowrange(1:1) stringcols(_all) bindquote(strict) encoding("utf-8")
-	local useraw = (c(k) == `K' & _N >= 1)
-	if `useraw' {
+	if c(k) == `K' & _N >= 1 {
 		forvalues j = 1/`K' {
 			local h`j' = trim(v`j'[1])
 		}
 	}
+	* header -> question name, for the questions of this group
+	quietly use "`meta'", clear
+	quietly keep if qgroup == `group'
+	quietly expand cond(qgeo, 5, 1)
+	sort qseq
+	generate byte _part = 0
+	quietly by qseq: replace _part = _n - 1
+	generate str10 _pn = ""
+	quietly replace _pn = word("Latitude Longitude Altitude Accuracy", _part) if _part > 0
+	generate str244 _k1 = qpath + cond(_part > 0, "-" + _pn, "")
+	generate str244 _k2 = qraw + cond(_part > 0, "-" + _pn, "")
+	generate str128 _t = usubstr(qname + ustrlower(_pn), 1, 32)
+	mata: _orm_match(`K')
 	restore
-	local j 0
-	foreach v of local __vars {
-		local ++j
-		if `useraw' local lab `"`h`j''"'
-		else local lab : variable label `v'
+
+	* 1a. matched columns not yet under their name: move out of the way
+	forvalues j = 1/`K' {
+		if "`t`j''" != "" & "`t`j''" != "`v`j''" {
+			rename `v`j'' __orm_t`j'
+			local v`j' __orm_t`j'
+		}
+	}
+	* 1b. give them their name
+	forvalues j = 1/`K' {
+		if "`t`j''" == "" | "`t`j''" == "`v`j''" continue
+		local occ 0
+		capture confirm new variable `t`j''
+		if _rc {
+			forvalues i = 1/`K' {
+				if "`v`i''" == "`t`j''" local occ `i'
+			}
+		}
+		if `occ' {
+			if "`t`occ''" != "" {
+				display as error `"CSV columns "`h`occ''" and "`h`j''" are both question `t`j'' of the XLSForm."'
+				display as error "Question names must be unique within the form; rename one of the questions."
+				exit 110
+			}
+			* taken by a column that is not in the form: give that one v#
+			capture confirm new variable v`occ'
+			if _rc {
+				display as error `"CSV column "`h`j''" (question `t`j'') clashes with column "`h`occ''"; rename one of them"'
+				exit 110
+			}
+			rename `v`occ'' v`occ'
+			local v`occ' v`occ'
+		}
+		rename `v`j'' `t`j''
+		local v`j' `t`j''
+	}
+	* 2. other group-prefixed columns
+	forvalues j = 1/`K' {
+		if "`t`j''" != "" continue
+		local lab `"`h`j''"'
 		local geo
-		if regexm(lower(`"`lab'"'), "^(.+)-(latitude|longitude|altitude|accuracy)$") {
-			local geo = regexs(2)
+		if regexm(`"`lab'"', "^(.+-.+)-(Latitude|Longitude|Altitude|Accuracy)$") {
+			local geo = lower(regexs(2))
 			local lab = regexs(1)
 		}
 		if !regexm(`"`lab'"', "^(.+)-([^-]+)$") continue
-		local prefix = lower(regexs(1))
+		local prefix = ustrlower(regexs(1))
 		local field = regexs(2)
-		local field = lower(usubstr(ustrregexra(`"`field'"', "[^\p{L}\p{N}_]", ""), 1, 32))
-		local new `field'`geo'
-		if "`new'" == "`v'" | length("`new'") > 32 continue
+		local field = ustrlower(usubstr(ustrregexra(`"`field'"', "[^\p{L}\p{N}_]", ""), 1, 32))
+		if "`geo'" != "" {
+			* grp-gps-Latitude: gps must be a question, the part kept
+			local inform : list posof "`field'" in names
+			if !`inform' continue
+			local field = usubstr("`field'`geo'", 1, 32)
+		}
+		if "`field'" == "`v`j''" continue
 		local prefix : subinstr local prefix "-" " ", all
 		local okprefix 1
 		foreach p of local prefix {
@@ -598,10 +735,102 @@ program define _orm_ungroup
 			if !`isgrp' local okprefix 0
 		}
 		if !`okprefix' continue
-		local inform : list posof "`field'" in names
-		if !`inform' continue
-		capture confirm new variable `new'
+		if "`geo'" == "" {
+			local inform : list posof "`field'" in names
+			if !`inform' continue
+		}
+		capture confirm new variable `field'
 		if _rc continue
-		rename `v' `new'
+		rename `v`j'' `field'
+		local v`j' `field'
 	}
+end
+
+
+version 14
+mata:
+
+// _orm_ungroup: look up the target name of each header h1..hK (locals);
+// set local t<j> for the matched ones. Full paths win over bare names.
+void _orm_match(real scalar K)
+{
+	string colvector k1, k2, t
+	transmorphic scalar A
+	real scalar i
+	string scalar h
+
+	k1 = st_sdata(., "_k1")
+	k2 = st_sdata(., "_k2")
+	t  = st_sdata(., "_t")
+	A = asarray_create()
+	for (i = 1; i <= rows(t); i++) {
+		if (k1[i] != "" & !asarray_contains(A, k1[i])) asarray(A, k1[i], t[i])
+	}
+	for (i = 1; i <= rows(t); i++) {
+		if (k2[i] != "" & !asarray_contains(A, k2[i])) asarray(A, k2[i], t[i])
+	}
+	for (i = 1; i <= K; i++) {
+		h = st_local("h" + strofreal(i))
+		if (h != "") {
+			if (asarray_contains(A, h)) st_local("t" + strofreal(i), asarray(A, h))
+		}
+	}
+}
+
+// reshape wide: check the names stub+j for every stub and instance j.
+// Sets locals __long (first name longer than maxlen), __dup (first name
+// made twice) and __dupwhat (the two stub/instance pairs that make it).
+void _orm_widecheck(string scalar stubs, string scalar jvals, real scalar maxlen)
+{
+	string rowvector s, j
+	string colvector a, w
+	real colvector o
+	real scalar x, y, k
+
+	s = tokens(stubs)
+	j = tokens(jvals)
+	a = J(cols(s) * cols(j), 1, "")
+	w = a
+	k = 0
+	for (x = 1; x <= cols(s); x++) {
+		for (y = 1; y <= cols(j); y++) {
+			k++
+			a[k] = s[x] + j[y]
+			w[k] = s[x] + " instance " + j[y]
+		}
+	}
+	st_local("__long", "")
+	st_local("__dup", "")
+	st_local("__dupwhat", "")
+	for (k = 1; k <= rows(a); k++) {
+		if (ustrlen(a[k]) > maxlen) {
+			st_local("__long", a[k])
+			break
+		}
+	}
+	if (rows(a) < 2) return
+	o = order(a, 1)
+	for (k = 2; k <= rows(a); k++) {
+		if (a[o[k]] == a[o[k - 1]]) {
+			st_local("__dup", a[o[k]])
+			st_local("__dupwhat", w[o[k - 1]] + " and " + w[o[k]])
+			break
+		}
+	}
+}
+
+// 1 where a[i] is one of the words in b
+real colvector _orm_inlist(string colvector a, string rowvector b)
+{
+	transmorphic scalar A
+	real colvector r
+	real scalar i
+
+	A = asarray_create()
+	for (i = 1; i <= cols(b); i++) asarray(A, b[i], 1)
+	r = J(rows(a), 1, 0)
+	for (i = 1; i <= rows(a); i++) r[i] = asarray_contains(A, a[i])
+	return(r)
+}
+
 end

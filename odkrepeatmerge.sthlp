@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.0 23nov2026 Arman Mahmud}{...}
+{* *! version 1.5.0 24nov2026 Arman Mahmud}{...}
 {viewerjumpto "Syntax" "odkrepeatmerge##syntax"}{...}
 {viewerjumpto "Description" "odkrepeatmerge##description"}{...}
 {viewerjumpto "Files and folders" "odkrepeatmerge##files"}{...}
@@ -9,7 +9,7 @@
 {viewerjumpto "Stored results" "odkrepeatmerge##results"}{...}
 {viewerjumpto "Author" "odkrepeatmerge##author"}{...}
 {hline}
-help for {bf:odkrepeatmerge} {right:version 1.5.0 23nov2026}
+help for {bf:odkrepeatmerge} {right:version 1.5.0 24nov2026}
 {hline}
 
 {title:Title}
@@ -109,7 +109,8 @@ it (see {help odkrepeatmerge##files:Files and folders}).
 {phang}
 {opt xlsform(filename)} is the XLSForm used to collect the data, e.g.
 {cmd:xlsform("D:/survey/instrument/HH Survey.xlsx")}.  It is read from its
-{cmd:survey} sheet, which must have {cmd:type} and {cmd:name} columns.
+{cmd:survey} sheet (or, if there is none, its first sheet, with a note),
+which must have {cmd:type} and {cmd:name} columns.
 {opt formtitle()} is an older name for this option and still works.
 
 {dlgtab:Optional}
@@ -128,15 +129,19 @@ overwrites a file; use it when you run the command again.
 {phang}
 {opt separator} puts an underscore between a question name and its instance
 number: {cmd:q1_11} instead of {cmd:q111}.  Use it when two questions differ
-only by trailing digits (e.g. {cmd:q1} and {cmd:q11}); without it their
-names would clash and {cmd:odkrepeatmerge} stops with an error.
+only by trailing digits (e.g. {cmd:q1} and {cmd:q11}).  Without it,
+{cmd:q1} instance 11 and {cmd:q11} instance 1 would both be {cmd:q111};
+{cmd:odkrepeatmerge} checks every name before it is created and stops with
+an error if two would be the same.
 
 {phang}
 {opt allstring} imports every CSV column as a string.  By default numbers
 are detected automatically (decimals are stored as {cmd:double}, so GPS
 coordinates keep full precision), and codes such as {cmd:007} become
-{cmd:7}.  Use {helpb destring} afterwards for the variables you want as
-numbers.
+{cmd:7}.  Integers longer than 15 digits (national ID or long phone
+numbers) cannot be stored exactly as numbers; use {opt allstring} if the
+data have such columns.  Use {helpb destring} afterwards for the variables
+you want as numbers.
 
 
 {marker remarks}{...}
@@ -156,7 +161,8 @@ brackets for repeat questions: {cmd:[2_1] Type of illness}.  Questions
 without a label are labelled with their name.
 
 {pstd}
-{bf:Order.} Variables follow the order of the {cmd:survey} sheet, with each
+{bf:Order.} {cmd:key} comes first; the other variables follow the order of
+the {cmd:survey} sheet, with each
 repeat instance kept together.  Notes and the parts of a geopoint
 ({it:gps}{cmd:latitude}, {it:gps}{cmd:longitude}, ...) are placed with their
 question.  Columns that are not in the XLSForm (for example from an older
@@ -165,9 +171,11 @@ placed at the end and listed on screen.  ODK Central system columns such as
 {cmd:SubmissionDate} are placed at the end without being listed.
 
 {pstd}
-{bf:Question names.} Names must be unique across the form; a name used
-twice is reported when the XLSForm is read, and stops the command with an
-error if both columns would get the same variable name.  Hyphens and dots
+{bf:Question names.} Names should be unique across the form.  A name used
+twice is reported when the XLSForm is read; if both questions have a
+column in the data (in the same CSV, or in a repeat and its parent), the
+command stops with an error, because the two columns cannot both get that
+name.  Rename one of the questions.  Hyphens and dots
 in names are dropped, as {helpb import delimited} does
 ({cmd:start-geopoint} becomes {cmd:startgeopoint}).  If select_multiple
 questions inside a repeat are exported as separate columns ({cmd:food/1},
@@ -180,8 +188,10 @@ earlier instances were deleted or rows are out of order.
 
 {pstd}
 {bf:Group names.} ODK Central may name fields inside groups
-{it:group}{cmd:-}{it:field}.  These prefixes are removed automatically, so
-exports with or without "Remove group names" both work.
+{it:group}{cmd:-}{it:field} (geopoints {it:group}{cmd:-}{it:gps}{cmd:-Latitude},
+...).  Each column header is matched to the question with that group path
+in the XLSForm, so the prefixes are removed even when a group name contains
+{cmd:-}, and exports with or without "Remove group names" both work.
 
 {pstd}
 {bf:Edge cases.} Child CSVs with no rows are skipped.  Child rows whose

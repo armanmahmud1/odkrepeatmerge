@@ -34,8 +34,8 @@ odkrepeatmerge using maincsv, xlsform(filename) [saving(filename [, replace]) re
 |---|---|
 | `saving(file [, replace])` | Save the result under another name or folder (must be a `.dta` file). Add `, replace` inside to overwrite |
 | `replace` | Overwrite the output file if it exists. The command never overwrites without it, so add it when you run again |
-| `separator` | Name variables `q1_11` instead of `q111`. Use it when two questions differ only by trailing digits (`q1`, `q11`), or when select_multiple choices inside a repeat are exported as separate columns (`food/1`, `food/11`); otherwise names clash and the command stops with an error |
-| `allstring` | Import all columns as strings, so codes like `007` don't become `7`. Use `destring` afterwards where needed |
+| `separator` | Name variables `q1_11` instead of `q111`. Use it when two questions differ only by trailing digits (`q1`, `q11`), or when select_multiple choices inside a repeat are exported as separate columns (`food/1`, `food/11`). Without it, `q1` instance 11 and `q11` instance 1 would both be `q111`; every name is checked before it is created, and the command stops with an error if two would be the same |
+| `allstring` | Import all columns as strings, so codes like `007` don't become `7`, and integers longer than 15 digits (national ID numbers) are kept exactly. Use `destring` afterwards where needed |
 
 ## Files and folders
 The data and the XLSForm can be in different folders:
@@ -49,7 +49,7 @@ D:/survey/instrument/HH Survey.xlsx    XLSForm
 - **Child CSVs must be in the same folder as the main CSV**, named `stem-groupname.csv`, where `stem` is the main CSV's name without `.csv` (`hh_survey`) and `groupname` is the repeat group's name in the XLSForm. This is how ODK Central names them.
 - **The output is saved as `stem.dta` (`hh_survey.dta`) in the current working directory**, so nothing is written to the raw data folder. Use `cd` to choose the folder first, or give the output file with `saving()`.
 - Paths can be full paths or relative to the current working directory. Use forward slashes.
-- Use the files as downloaded from ODK Central: the main CSV needs a `KEY` column, and each child CSV needs `KEY` and `PARENT_KEY`. Use the XLSForm version that collected the data.
+- Use the files as downloaded from ODK Central: the main CSV needs a `KEY` column, and each child CSV needs `KEY` and `PARENT_KEY`. Use the XLSForm version that collected the data. It is read from the `survey` sheet (or the first sheet if there is none).
 
 ## Examples
 ```stata
@@ -69,14 +69,15 @@ odkrepeatmerge using "raw/hh_survey.csv", xlsform("instrument/HH Survey.xlsx") a
 ```
 
 ## Output
-- One row per submission; variables follow the order of the XLSForm's survey sheet, with each repeat instance kept together. Notes and geopoint parts (`gpslatitude`, `gpslongitude`, ...) sit with their question.
+- One row per submission; `key` comes first, then the variables in the order of the XLSForm's survey sheet, with each repeat instance kept together. Notes and geopoint parts (`gpslatitude`, `gpslongitude`, ...) sit with their question.
 - Repeat questions get the instance number added: `name2` is `name` for member 2. For a nested repeat the numbers are innermost first: `ill_type2_1` is illness 2 of member 1 (`ill_type_2_1` with `separator`).
 - Variables are labelled with the question label from the XLSForm; repeat questions show the instance numbers, e.g. `[2_1] Type of illness`.
 - Instance numbers come from ODK's `KEY` (`member[3]` is always instance 3), so deleted instances or rows out of order do not shift data.
 - Decimal numbers are stored as `double`, so GPS coordinates keep full precision.
 - Columns not in the XLSForm (e.g. from an older form version, or split select_multiple columns such as `food/1`) are placed at the end and listed on screen. ODK Central system columns such as `SubmissionDate` go to the end without being listed.
 - Child CSVs with no rows are skipped; child rows whose parent is not in the data are dropped and counted on screen.
-- Question names must be unique across the form; a duplicated name is reported, and stops the command if both columns would get the same variable name.
+- Group prefixes (`group-field`, `group-gps-Latitude`) are removed by matching each header to the question's group path in the XLSForm, so group names containing `-` work too.
+- Question names should be unique across the form. A duplicated name is reported; if both questions have a column in the data, the command stops with an error, because the two columns cannot get the same name.
 - `r(fn)`, `r(N)`, `r(k)`, `r(n_repeat)`, `r(n_unmatched)` and `r(unmatched)` (only when there are unmatched variables) describe the result.
 
 ## Testing
@@ -89,7 +90,7 @@ It runs the repository copy of the command (not an installed one) and prints a P
 ## Version history
 | Version | Changes |
 |---|---|
-| 1.5.0 | Exact variable-to-question matching (fixes misplaced variables when names differ only by trailing digits; much faster on large forms); variable labels from the XLSForm; notes and geopoint parts ordered with their question; decimals imported as `double`; group-prefixed headers longer than 80 characters and names with `-`/`.` or over 32 characters handled; clearer errors for empty main CSV, duplicate KEYs, name clashes and non-`.dta` output; duplicated question names reported |
+| 1.5.0 | Exact variable-to-question matching (fixes misplaced variables when names differ only by trailing digits; much faster on large forms); every wide name checked before reshape (no value lost when `q31` instance 1 and `q3` instance 11 meet); variable labels from the XLSForm; notes and geopoint parts ordered with their question; decimals imported as `double`; group prefixes matched against the XLSForm's group paths (group names with `-`, questions named like geopoint parts, headers longer than 80 characters); Unicode names; names with `-`/`.` or over 32 characters handled; correct orphan-row counts; no globals left behind; clearer errors for empty main CSV, duplicate or empty KEY/PARENT_KEY, duplicated question names, name clashes, a missing output folder and non-`.dta` output |
 | 1.4.0 | New `using` syntax: data, XLSForm and output can be in different folders; output defaults to the current directory |
 | 1.3.0 | `saving()` / `replace` (no silent overwrite); ODK Central group-name prefixes handled; unmatched variables reported; variable-limit check; `allstring`; stored results; `xlsform()` |
 | 1.2.0 | Fixed blank `end_repeat` names, instance numbers ≥ 10, empty repeat files, forms without repeats; `separator` option |
