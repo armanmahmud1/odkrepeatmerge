@@ -242,6 +242,7 @@ qui {
 	}
 	_orm_ungroup using `"`mainfile'"', meta("`question_meta'") group(0) ///
 		names(`qnamelist' `__sys') groups(`grpnames')
+	local qmap0 `r(qmap)'
 	unab own0 : _all
 	capture confirm variable key
 	if _rc {
@@ -274,6 +275,7 @@ qui {
 		}
 		_orm_ungroup using `"`fn'"', meta("`question_meta'") group(`g') ///
 			names(`qnamelist' `__sys') groups(`grpnames')
+		local qmap`g' `r(qmap)'
 		capture isid key
 		if _rc {
 			noisily display as error `"`fn': KEY is missing or duplicated in some rows"'
@@ -528,6 +530,10 @@ qui {
 		mata: st_store(., st_addvar("byte", "_own"), ///
 			_orm_inlist(st_sdata(., "_stub"), tokens(st_local("own`g'"))))
 		keep if _own
+		* a name used by two questions: keep the one its column was matched to
+		mata: st_store(., st_addvar("byte", "_qok"), ///
+			_orm_qok(st_sdata(., "_stub"), st_data(., "qseq"), st_local("qmap`g'")))
+		keep if _qok
 		if _N == 0 continue
 		generate str244 actual = _stub + cond(`g' > 0, "`sep'" + _sfx, "")
 		generate str244 vlab = cond(qlabel != "", qlabel, qname)
@@ -636,9 +642,10 @@ end
 *   2. Otherwise, if every "-" segment but the last is a group or repeat
 *      name and the last is a question (or Central system column), the
 *      column gets that name if it is free (e.g. meta-instanceID).
-* Two columns of the same question (a name used twice in the form) stop
-* with an error.
-program define _orm_ungroup
+* Two columns that would get the same name stop with an error.
+* r(qmap) lists "name qseq" for the columns matched in step 1, so a name
+* used by two questions is labelled and placed as the one it came from.
+program define _orm_ungroup, rclass
 	version 14
 	syntax using/ , meta(string) group(integer) [names(string) groups(string)]
 	unab __vars : _all
@@ -692,8 +699,8 @@ program define _orm_ungroup
 		}
 		if `occ' {
 			if "`t`occ''" != "" {
-				display as error `"CSV columns "`h`occ''" and "`h`j''" are both question `t`j'' of the XLSForm."'
-				display as error "Question names must be unique within the form; rename one of the questions."
+				display as error `"CSV columns "`h`occ''" and "`h`j''" would both become variable `t`j''."'
+				display as error "If two questions in the XLSForm share this name, rename one of them."
 				exit 110
 			}
 			* taken by a column that is not in the form: give that one v#
@@ -708,6 +715,12 @@ program define _orm_ungroup
 		rename `v`j'' `t`j''
 		local v`j' `t`j''
 	}
+	* which question each matched column belongs to
+	local qmap
+	forvalues j = 1/`K' {
+		if "`t`j''" != "" local qmap `qmap' `t`j'' `q`j''
+	}
+	return local qmap `qmap'
 	* 2. other group-prefixed columns
 	forvalues j = 1/`K' {
 		if "`t`j''" != "" continue
@@ -755,24 +768,30 @@ mata:
 void _orm_match(real scalar K)
 {
 	string colvector k1, k2, t
+	real colvector q
 	transmorphic scalar A
-	real scalar i
+	real scalar i, r
 	string scalar h
 
 	k1 = st_sdata(., "_k1")
 	k2 = st_sdata(., "_k2")
 	t  = st_sdata(., "_t")
+	q  = st_data(., "qseq")
 	A = asarray_create()
 	for (i = 1; i <= rows(t); i++) {
-		if (k1[i] != "" & !asarray_contains(A, k1[i])) asarray(A, k1[i], t[i])
+		if (k1[i] != "" & !asarray_contains(A, k1[i])) asarray(A, k1[i], i)
 	}
 	for (i = 1; i <= rows(t); i++) {
-		if (k2[i] != "" & !asarray_contains(A, k2[i])) asarray(A, k2[i], t[i])
+		if (k2[i] != "" & !asarray_contains(A, k2[i])) asarray(A, k2[i], i)
 	}
 	for (i = 1; i <= K; i++) {
 		h = st_local("h" + strofreal(i))
 		if (h != "") {
-			if (asarray_contains(A, h)) st_local("t" + strofreal(i), asarray(A, h))
+			if (asarray_contains(A, h)) {
+				r = asarray(A, h)
+				st_local("t" + strofreal(i), t[r])
+				st_local("q" + strofreal(i), strofreal(q[r], "%12.0f"))
+			}
 		}
 	}
 }
@@ -817,6 +836,25 @@ void _orm_widecheck(string scalar stubs, string scalar jvals, real scalar maxlen
 			break
 		}
 	}
+}
+
+// 0 where name a[i] was matched (by its CSV header) to another question
+// than qs[i]; map = "name qseq name qseq ..." from _orm_ungroup
+real colvector _orm_qok(string colvector a, real colvector qs, string scalar map)
+{
+	transmorphic scalar A
+	string rowvector m
+	real colvector r
+	real scalar i
+
+	m = tokens(map)
+	A = asarray_create()
+	for (i = 1; i + 1 <= cols(m); i = i + 2) asarray(A, m[i], strtoreal(m[i + 1]))
+	r = J(rows(a), 1, 1)
+	for (i = 1; i <= rows(a); i++) {
+		if (asarray_contains(A, a[i])) r[i] = (asarray(A, a[i]) == qs[i])
+	}
+	return(r)
 }
 
 // 1 where a[i] is one of the words in b

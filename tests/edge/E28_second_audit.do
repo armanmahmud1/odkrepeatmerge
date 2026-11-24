@@ -8,7 +8,8 @@
         repeat question's label and place
      c  group prefixes: a question named latitude in a group, a group name
         containing "-", and hh-size next to a question hhsize
-     d  the same question name in two groups: r(110)
+     d  the same question name in two groups: r(110) if both are
+        exported; if only one is, it gets that question's label and place
      e  Unicode: a 19-character Cyrillic repeat question; an upper-case
         non-ASCII name at main level
      f  no reshape globals or characteristics left behind
@@ -137,6 +138,29 @@ assert _rc == 110
 _w "`d'/dd.csv" "age,age,KEY" "1,2,u1"
 capture noisily odkrepeatmerge using "`d'/dd.csv", xlsform("`d'/dd.xlsx") saving("`d'/dd.dta", replace)
 assert _rc == 110
+* only b-age exported: age must be labelled and placed as question b/age
+clear
+input str20 type str20 name str20 label
+"text"        "m1"  "M one"
+"begin_group" "a"   ""
+"integer"     "age" "Age A"
+"end_group"   ""    ""
+"text"        "m2"  "M two"
+"begin_group" "b"   ""
+"integer"     "age" "Age B"
+"end_group"   ""    ""
+end
+export excel using "`d'/dd.xlsx", firstrow(variables) sheet("survey") replace
+_w "`d'/dd.csv" "m1,m2,b-age,KEY" "x,y,7,u1"
+odkrepeatmerge using "`d'/dd.csv", xlsform("`d'/dd.xlsx") saving("`d'/dd.dta", replace)
+use "`d'/dd.dta", clear
+unab got : _all
+if "`got'" != "key m1 m2 age" {
+	display as error "d: order key m1 m2 age expected, got `got'"
+	exit 9
+}
+assert age == 7
+assert "`: variable label age'" == "Age B"
 
 * --- e: Unicode names -----------------------------------------------------
 local cyr = ustrunescape("\u0432\u043e\u0437\u0440\u0430\u0441\u0442_\u0447\u043b\u0435\u043d\u0430_\u0441\u0435\u043c\u044c\u0438")
