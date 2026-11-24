@@ -135,7 +135,7 @@ qui {
 	* qname: variable name import delimited makes from the question name
 	* qraw/qpath: CSV header without/with group prefix (relative to the
 	*            enclosing repeat), as ODK Central writes it
-	postfile `qh' str128 qname str244 qlabel str244 qtemplate int qdepth ///
+	postfile `qh' str128 qname str320 qlabel str244 qtemplate int qdepth ///
 		long qseq byte qgeo int qgroup str128 qraw str244 qpath ///
 		using "`question_meta'", replace
 
@@ -536,7 +536,7 @@ qui {
 		keep if _qok
 		if _N == 0 continue
 		generate str244 actual = _stub + cond(`g' > 0, "`sep'" + _sfx, "")
-		generate str244 vlab = cond(qlabel != "", qlabel, qname)
+		generate str400 vlab = cond(qlabel != "", qlabel, qname)
 		replace vlab = vlab + " (" + _pn + ")" if _part > 0
 		if `g' > 0 replace vlab = "[" + _sfx + "] " + vlab
 		replace vlab = usubstr(vlab, 1, 80)
@@ -552,6 +552,8 @@ qui {
 		local ++nexp
 	}
 	if `nexp' {
+		* the last group may have been skipped, leaving other data in memory
+		use "`expect'", clear
 		* a name can only be created once (a clash stops the merge above)
 		bysort actual (qseq): keep if _n == 1
 		save "`expect'", replace

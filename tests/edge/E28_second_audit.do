@@ -16,6 +16,8 @@
      g  empty PARENT_KEY and duplicate KEY in a repeat CSV: r(459)
      h  output folder that does not exist (with replace): error before work
      i  separator with questions a and a_ in one repeat, in either order
+     j  last repeat group whose question columns are all missing
+     k  80-character label made of 4-byte characters (emoji)
    Run from the repo root (or via tests/run_all_tests.do).
 ----------------------------------------------------------------------*/
 version 14
@@ -228,5 +230,25 @@ foreach ord in "a a_" "a_ a" {
 	use "`d'/i.dta", clear
 	assert a_1 == "v_a" & a__1 == "v_a_"
 }
+
+* --- j: last repeat has rows but none of its questions' columns ---------
+*        (crashed in section 4); k: 80-character emoji label kept whole
+local emo = ustrunescape("\U0001F600")
+local lab
+forvalues i = 1/80 {
+	local lab `lab'`emo'
+}
+clear
+set obs 4
+generate str20 type = cond(_n == 1, "text", cond(_n == 2, "begin_repeat", cond(_n == 3, "text", "end_repeat")))
+generate str20 name = cond(_n == 1, "m1", cond(_n == 2, "r", cond(_n == 3, "q", "")))
+generate str400 label = cond(_n == 1, "`lab'", "")
+export excel using "`d'/j.xlsx", firstrow(variables) sheet("survey") replace
+_w "`d'/j.csv" "m1,KEY" "x,u1"
+_w "`d'/j-r.csv" "z,PARENT_KEY,KEY" "Z1,u1,u1/r[1]"
+odkrepeatmerge using "`d'/j.csv", xlsform("`d'/j.xlsx") saving("`d'/j.dta", replace) allstring
+assert r(n_unmatched) == 1 & "`r(unmatched)'" == "z1"
+use "`d'/j.dta", clear
+assert ustrlen(`"`: variable label m1'"') == 80
 
 display as result "E28 PASS: second-audit regressions"
