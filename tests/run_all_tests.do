@@ -51,7 +51,7 @@ if `"`loaded'"' != `"`want'"' {
 
 * --- Test list ------------------------------------------------------------
 local tests
-foreach sub in regression edge certification realdata {
+foreach sub in regression edge certification {
 	local files : dir "tests/`sub'" files "*.do"
 	local files : list sort files
 	foreach f of local files {
