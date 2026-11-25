@@ -244,7 +244,7 @@ that would clash, names longer than 32 characters, and data wider than
 
 {pstd}
 Arman Mahmud{break}
-Email: arman.mahmud.stat@gmail.com </br>
+Email: {browse "mailto:arman.mahmud.stat@gmail.com":arman.mahmud.stat@gmail.com}{break}
 Web: {browse "https://www.arman-mahmud.com":arman-mahmud.com}{break}
 Issues: {browse "https://github.com/armanmahmud1/odkrepeatmerge/issues"}
 
