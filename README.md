@@ -13,11 +13,21 @@ ODK Central exports one CSV for the main form (parent) and one CSV per repeat gr
 Requires Stata 14 or newer (developed and tested on Stata 17).
 
 ## Installation
+From SSC (recommended):
 ```stata
-net install odkrepeatmerge, from("https://raw.githubusercontent.com/armanmahmud1/odkrepeatmerge/main/") replace
+ssc install odkrepeatmerge
 help odkrepeatmerge
 ```
 
+Latest development version from GitHub:
+```stata
+net install odkrepeatmerge, from("https://raw.githubusercontent.com/armanmahmud1/odkrepeatmerge/main/") replace
+```
+
+To update an existing installation from SSC:
+```stata
+ado update odkrepeatmerge, update
+```
 ## Syntax
 ```stata
 odkrepeatmerge using maincsv, xlsform(filename) [saving(filename [, replace]) replace separator allstring]
